@@ -25,7 +25,7 @@ module prewish_blinky (
     input RST_I,
     input STB_I,
     input[7:0] DAT_I,
-    output oN_led           //I use oN_ and iN_ to mean active low output and input
+    output o_led
 );
     //I think inputs are assumed to be wires?    
     
@@ -42,7 +42,7 @@ module prewish_blinky (
     //-- El bit más significativo se saca por la salida, this could be the "clock" that advances the mask
     //assign mask_clk = ckdiv[SYSCLK_DIV_BITS-1];       //this makes the first mask period half-length, see notes
     reg mask_clk = 0;
-    reg oN_led = 1;     //see if can do *********** possibug
+    reg o_led = 0;     //see if can do *********** possibug
 
     always @(posedge mask_clk) begin
         if(~RST_I & ~STB_I) begin
@@ -51,11 +51,11 @@ module prewish_blinky (
             // *********** possibug, may be laggy (may be unavoidbly so) or worse, skip the first bit of the
             // pattern first time
             // also do I need to assign it to a wire?
-            oN_led <= ~mask[7];   //negated bc active low and bits are high = on for ease of reading
+            o_led <= mask[7];
             //if we get off by one bit maybe this will work :)
-            //oN_led <= ~mask[0];   //negated bc active low and bits are high = on for ease of reading
+            //o_led <= mask[0];
         end else begin
-            oN_led <= 1;                // active low LED off ********* possibug
+            o_led <= 0;
         end
     end
     
@@ -63,13 +63,13 @@ module prewish_blinky (
         if(RST_I == 1) begin            // reset case, just keep the mask pasted down
             ckdiv <= 0;
             mask <= 0;
-            oN_led <=1;                 // *********possibug
+            o_led <= 0;                 // *********possibug
             mask_clk <= 0;              // for synch toggle style mask_clk
         end else begin
             if(STB_I == 1) begin   // strobe case, load mask with DAT
                 ckdiv <= 0;
                                  // *********possibug
-                oN_led <= 1;        // shut off active low LED during load
+                o_led <= 0;        // shut off active high LED during load
                 mask <= DAT_I;
                 mask_clk <= 0;              // for synch toggle style mask_clk
             end else begin
@@ -82,12 +82,12 @@ module prewish_blinky (
                 //synch LED. can I do this with a register or do I have to assign it to a wire?
                 //also where do I do this? Might be better in the mask_clk - in fact yes I bet
                 //if it's here we get the same bug
-                //oN_led <= ~mask[7];   //negated bc active low and bits are high = on for ease of reading
+                //o_led <= mask[7];
             end
         end
     end
     
-    //pre-sync version assign oN_led = ~mask[7];   //negated bc active low and bits are high = on for ease of reading
+    //pre-sync version assign o_led = mask[7];
 
     /* non-divided version
     always @(posedge CLK_I) begin
