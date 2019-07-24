@@ -48,9 +48,12 @@ module prewish_blinky (
         if(~RST_I & ~STB_I) begin
             mask <= mask <<< 1;         // can you do this? you can do this!
             mask[0] <= mask[7]; 
-            // *********** possibug, may be laggy (may be unavoidbly so)
+            // *********** possibug, may be laggy (may be unavoidbly so) or worse, skip the first bit of the
+            // pattern first time
             // also do I need to assign it to a wire?
             oN_led <= ~mask[7];   //negated bc active low and bits are high = on for ease of reading
+            //if we get off by one bit maybe this will work :)
+            //oN_led <= ~mask[0];   //negated bc active low and bits are high = on for ease of reading
         end else begin
             oN_led <= 1;                // active low LED off ********* possibug
         end
