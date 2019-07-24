@@ -1,0 +1,4 @@
+*.vcd
+*.vvp
+*_out.txt
+*_err.txt
