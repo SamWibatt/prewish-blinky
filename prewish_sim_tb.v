@@ -25,7 +25,7 @@ module prewish_sim_tb;
     wire sysclk;
     wire strobe;
     wire[7:0] data;
-    wire led_n;         //active low LED
+    wire led;         //active high LED
 
 	//from this:
     //module prewish_syscon(
@@ -59,7 +59,7 @@ module prewish_sim_tb;
     //    input RST_I,
     //    input STB_I,
     //    input[7:0] DAT_I,
-    //    output oN_led           //I use oN_ and iN_ to mean active low output and input
+    //    output o_led
     //);
     
     prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
@@ -67,7 +67,7 @@ module prewish_sim_tb;
         .RST_I(reset),
         .STB_I(strobe),
         .DAT_I(data),
-        .oN_led(led_n)           //I use oN_ and iN_ to mean active low output and input
+        .o_led(led)
     );    
 
     //bit for creating gtkwave output
@@ -79,7 +79,7 @@ module prewish_sim_tb;
 
     initial begin
         //see if I can just wait some cycles
-        #500 $finish;        
+        #1111 $finish;        
     end
 
 endmodule
