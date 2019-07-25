@@ -40,8 +40,8 @@ module prewish_blinky (
     reg [SYSCLK_DIV_BITS-1:0] ckdiv = 0;
 
     //-- El bit más significativo se saca por la salida, this could be the "clock" that advances the mask
-    //assign mask_clk = ckdiv[SYSCLK_DIV_BITS-1];       //this makes the first mask period half-length, see notes
-    reg mask_clk = 0;
+    assign mask_clk = ckdiv[SYSCLK_DIV_BITS-1];       //this makes the first mask period half-length, see notes
+    //reg mask_clk = 0;
     reg o_led = 0;     //see if can do *********** possibug
 
     always @(posedge mask_clk) begin
@@ -64,25 +64,22 @@ module prewish_blinky (
             ckdiv <= 0;
             mask <= 0;
             o_led <= 0;                 // *********possibug
-            mask_clk <= 0;              // for synch toggle style mask_clk
+            //mask_clk <= 0;              // for synch toggle style mask_clk
         end else begin
             if(STB_I == 1) begin   // strobe case, load mask with DAT
                 ckdiv <= 0;
                                  // *********possibug
                 o_led <= 0;        // shut off active high LED during load
                 mask <= DAT_I;
-                mask_clk <= 0;              // for synch toggle style mask_clk
+                //mask_clk <= 0;              // for synch toggle style mask_clk
             end else begin
                 ckdiv = ckdiv + 1;
                 //new try synchronous toggling mask_clk instead of just upper bit of divider, see notes
+                /*
                 if (ckdiv == 0) begin      //was &ckdiv=1, that had the same problem as assign
                     mask_clk <= ~mask_clk;
                 end
-                // ********************************************* possibug
-                //synch LED. can I do this with a register or do I have to assign it to a wire?
-                //also where do I do this? Might be better in the mask_clk - in fact yes I bet
-                //if it's here we get the same bug
-                //o_led <= mask[7];
+                */
             end
         end
     end
