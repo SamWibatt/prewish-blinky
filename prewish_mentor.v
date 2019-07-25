@@ -50,7 +50,7 @@ module prewish_mentor(
                     strobe_reg <= 0;
                     if(STB_I == 1) begin
                         dat_reg <= DAT_I;   //load data from input pins to output register
-                        state[1] <= 1;      //advance to 01
+                        state <= 2'b01;      //advance to 01
                     end
                 end
 
@@ -58,14 +58,14 @@ module prewish_mentor(
                     //01 - if STB_I is low, advance to 11 and raise STB_O
                     if(~STB_I) begin
                         strobe_reg <= 1;
-                        state[0] <= 1;
+                        state <= 2'b11;
                     end
                 end
 
                 2'b11 : begin
                     //11 - lower STB_O, go to 00
                     strobe_reg <= 0;
-                    state <= 2'b11;
+                    state <= 2'b00;
                 end
 
                 2'b10 : begin
