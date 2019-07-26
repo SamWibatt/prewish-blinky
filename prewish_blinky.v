@@ -40,10 +40,15 @@ module prewish_blinky (
     reg [SYSCLK_DIV_BITS-1:0] ckdiv = 0;
 
     //-- El bit más significativo se saca por la salida, this could be the "clock" that advances the mask
-    assign mask_clk = ckdiv[SYSCLK_DIV_BITS-1];       //this makes the first mask period half-length, see notes
+    //see if we can avoid lagging by doing it st the clock ... rises when ckdiv is 0 and is just a pulse?
+    //SEEMS TO WORK JUST FINE
+    assign mask_clk = ckdiv == 1;   //ckdiv[SYSCLK_DIV_BITS-1];       
     reg o_led = 0;     //see if can do *********** possibug
 
-    always @(posedge mask_clk) begin
+    //ok, adding to sensitivity list. mask_clk doesn't really need to be routed like a clock,
+    //and I'm trying to get finer grained response to the strobe and reset, yes?
+    //should I just do this in the main loop?
+    always @(posedge mask_clk, posedge STB_I, posedge RST_I) begin
         if(~RST_I & ~STB_I) begin
             mask <= mask <<< 1;         // can you do this? you can do this!
             mask[0] <= mask[7]; 
@@ -53,8 +58,6 @@ module prewish_blinky (
             o_led <= mask[7];
             //if we get off by one bit maybe this will work :)
             //o_led <= mask[0];
-        end else begin
-            o_led <= 0;
         end
     end
     
@@ -71,6 +74,13 @@ module prewish_blinky (
                 mask <= DAT_I;
             end else begin
                 ckdiv = ckdiv + 1;
+                
+                //so if I were going to move the mask roll stuff in here, how would it work?
+                //could do a reg that is set to 0 during reset and if it's 0 here we ...
+                //or maybe strobe, if last cycle was strobe and this is not strobe, then 
+                //set the LED to the top of the mask?
+                //*************************** think re
+                //but I don't think I need to
             end
         end
     end

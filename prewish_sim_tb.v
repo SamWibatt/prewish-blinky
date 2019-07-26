@@ -85,13 +85,13 @@ module prewish_sim_tb;
 
     initial begin
         //see if I can just wait some cycles
-        mnt_data = 8'b1010100;
-        #20 mnt_stb = 1;
-        #21 mnt_stb = 0;
-        #700 mnt_data = 8'b11001010;
-        mnt_stb = 1;
-        #711 mnt_stb = 0;       //test long strobe
-        #1111 $finish;        
+        mnt_data = 8'b10101000;
+        #21 mnt_stb = 1;
+        #1 mnt_stb = 0;
+        #637 mnt_data = 8'b11001010;
+        #1 mnt_stb = 1;
+        #811 mnt_stb = 0;       //test long strobe
+        #1711 $finish;        
     end
 
 endmodule
