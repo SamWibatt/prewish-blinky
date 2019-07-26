@@ -89,9 +89,9 @@ module prewish_sim_tb;
         #21 mnt_stb = 1;
         #1 mnt_stb = 0;
         #637 mnt_data = 8'b11001010;
-        #1 mnt_stb = 1;
+        #99 mnt_stb = 1;
         #811 mnt_stb = 0;       //test long strobe
-        #1711 $finish;        
+        #711 $finish;        
     end
 
 endmodule
