@@ -26,6 +26,10 @@ module prewish_sim_tb;
     wire strobe;
     wire[7:0] data;
     wire led;         //active high LED
+    reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
+    reg[7:0] mnt_data=8'b00000000;  //DAT_I
+
+
 
 	//from this:
     //module prewish_syscon(
@@ -51,7 +55,9 @@ module prewish_sim_tb;
         .CLK_I(sysclk),
         .RST_I(reset),
         .STB_O(strobe),
-        .DAT_O(data)
+        .DAT_O(data),
+        .STB_I(mnt_stb),        //then here is the student that takes direction from testbench
+        .DAT_I(mnt_data)
     );
 
     //module prewish_blinky (
@@ -79,6 +85,12 @@ module prewish_sim_tb;
 
     initial begin
         //see if I can just wait some cycles
+        mnt_data = 8'b1010100;
+        #20 mnt_stb = 1;
+        #21 mnt_stb = 0;
+        #700 mnt_data = 8'b11001010;
+        mnt_stb = 1;
+        #711 mnt_stb = 0;       //test long strobe
         #1111 $finish;        
     end
 
