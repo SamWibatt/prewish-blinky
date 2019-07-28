@@ -1,4 +1,5 @@
 *.vcd
 *.vvp
+*.fst
 *_out.txt
 *_err.txt

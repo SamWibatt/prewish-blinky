@@ -19,7 +19,9 @@
 // weird, seems you can only do 1 or 2 as the first digit.
 // can I do 100 nanos? That'd be in the ballpark but slow.
 // FIGURE OUT HOW TO DO THAT PLL THING OR WHATEVER so I can do this - if it ends up mattering.
-`timescale 100ns/10ns
+// kind of ok `timescale 100ns/10ns
+`timescale 100ns/100ns
+
 
 //here's a cheap fake of the SB_GB module that the other tool chain uses 
 //this lets it compile!
@@ -62,8 +64,8 @@ module prewish_tb;
     // one problem with this organization is that I can't get at the blinky's parameter - can I? Can I add a param to controller that
     // passes it along? Let us try. We want a blinky mask clock to be about 3 full cycles of 8... let's say 32x as fast as newmask clk so 5 fewer bits?
     // let's try 6 - ok, that proportion looks not bad!
-    parameter CTRL_MASK_CLK_BITS 16
-    prewish_controller #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(10)) controller(
+    parameter CTRL_MASK_CLK_BITS=20;    //26 is "real?";  FROM CALCS IN THE LOOP BELOW I THINK 25 WILL BE IT     //works at 16 and 20
+    prewish_controller #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-6)) controller(
 
         .i_clk(clk),
         .RST_O(reset),
@@ -89,7 +91,23 @@ module prewish_tb;
         #711 $finish;       
         */
         //for short sim #7111 $finish;
-        #1000000 $finish;           //longer sim, mask clock is now 16 bits
+        //#1000000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
+        #16000000 $finish;             //20 bits, 80 sec, 600M vcd. Works, but huge.
+        //25 bit would be 32x as long, yes? assume that much bigger, too? massive file and 80*32 sec long which is not hideorrible but
+        //I don't think it's necessary.
+        //#10000000 $finish;           //10x longer sim, mask clock is now 26 bits - small subset. 40 sec on vm, 400M vcd. Even this doesn't show anything interesting.
+        /* gtkwave yelled
+        Warning! File size is 379 MB.  This might fail in recoding.
+        Consider converting it to the FST database format instead.  (See the
+        vcd2fst(1) manpage for more information.)
+        To disable this warning, set rc variable vcd_warning_filesize to zero.
+        Alternatively, use the -o, --optimize command line option to convert to FST
+        or the -g, --giga command line option to use dynamically compressed memory.
+        */
+        //+ yeah def use the -o.
+        //So ok 20 bit clock looks good, and as far as timing goes - right now it's all taking 1.6 seconds, there are about 50 cycles of LED blink
+        //with every 3rd or so cut off - so it's maybe... supposed to be like 48 seconds? which is 30 times 1.6 seconds, or 5 bits more on the main clock?
+        
         //#1000000000 $finish;      //"real" time, and probably short for that
     end
 
