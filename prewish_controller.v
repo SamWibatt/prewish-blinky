@@ -146,13 +146,14 @@ module prewish_controller(
 	
 	always @(posedge CLK_O) begin
 		if (~RST_O) begin
-			newmask_clk_ct <= newmask_clk_ct + 1;
+			newmask_clk_ct <= newmask_clk_ct + 3;  //was 1, try to stir up
 		end else begin
 			newmask_clk_ct <= 0;
 		end
 	end
 	
-	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework
+	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable, hits neatly on edges of LED cycle
+	//how to fudge it out a bit? Or just make it not a NRN.
 	
 	
 	//some data
