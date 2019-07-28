@@ -1,7 +1,6 @@
-******************** CURRENTLY UNCHANGED FROM blinky.pcf in nextpnr-blinky except the name of the clock signal
-set_io led1 99
-set_io led2 98
-set_io led3 97
-set_io led4 96
-set_io led5 95
+set_io o_led 95
+set_io o_led0 99
+set_io o_led1 98
+set_io o_led2 97
+set_io o_led3 96
 set_io i_clk 21

@@ -41,6 +41,7 @@ module prewish_tb;
     wire strobe;
     wire[7:0] data;
     wire led;         //active high LED
+    wire led0, led1, led2, led3;        //other lights on the icestick
     reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
     reg[7:0] mnt_data=8'b00000000;  //DAT_I
 
@@ -64,12 +65,18 @@ module prewish_tb;
     // one problem with this organization is that I can't get at the blinky's parameter - can I? Can I add a param to controller that
     // passes it along? Let us try. We want a blinky mask clock to be about 3 full cycles of 8... let's say 32x as fast as newmask clk so 5 fewer bits?
     // let's try 6 - ok, that proportion looks not bad!
-    parameter CTRL_MASK_CLK_BITS=20;    //26 is "real?";  FROM CALCS IN THE LOOP BELOW I THINK 25 WILL BE IT     //works at 16 and 20
+    parameter CTRL_MASK_CLK_BITS=16; //20;    //26 is "real?";  FROM CALCS IN THE LOOP BELOW I THINK 25 WILL BE IT     //works at 16 and 20
     prewish_controller #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-6)) controller(
 
         .i_clk(clk),
-        .RST_O(reset),
-        .CLK_O(sysclk)
+        //.RST_O(reset),
+        //.CLK_O(sysclk)
+        .o_led(led),
+        .o_led0(led0),
+        .o_led1(led1),
+        .o_led2(led2),
+        .o_led3(led3)
+        
     );
 
     //bit for creating gtkwave output
@@ -91,8 +98,8 @@ module prewish_tb;
         #711 $finish;       
         */
         //for short sim #7111 $finish;
-        //#1000000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
-        #16000000 $finish;             //20 bits, 80 sec, 600M vcd. Works, but huge.
+        #1000000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
+        //#16000000 $finish;             //20 bits, 80 sec, 600M vcd. Works, but huge.
         //25 bit would be 32x as long, yes? assume that much bigger, too? massive file and 80*32 sec long which is not hideorrible but
         //I don't think it's necessary.
         //#10000000 $finish;           //10x longer sim, mask clock is now 26 bits - small subset. 40 sec on vm, 400M vcd. Even this doesn't show anything interesting.

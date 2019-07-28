@@ -8,10 +8,33 @@
 // MAIN ********************************************************************************************************************************************
 module prewish_controller(
     input i_clk, 
-    output RST_O,               //wy not use the wishbone name - and maybe even bring these out to pins could be fun for testing with that little logic analyzer
-    output CLK_O                //"
+//    output RST_O,               //wy not use the wishbone name - and maybe even bring these out to pins could be fun for testing with that little logic analyzer
+//    output CLK_O                //"
+	output o_led,					//this is THE LED, the green one
+	output o_led0,						//these others are just the other LEDs on the board and they go to 0. except perhaps for other status things.
+	output o_led1,
+	output o_led2,
+	output o_led3
 );
 
+	// registers for the non-blinky LED. one of which will be used to do a super simple "I'm Alive" blinky. 
+	// others need to be driven low, I think.
+	reg [3:0] otherLEDs = 0;
+	parameter REDBLINKBITS = 23;			//11 = now I'm getting a thing where the red led is on seemingly continuous
+	
+	//super elementary blinky LED, divide clock down by about 4 million = 22 bits? let's mess with it
+	reg[REDBLINKBITS-1:0] redblinkct = 0;
+	always @(posedge i_clk) begin
+		redblinkct <= redblinkct + 1;
+	end
+	
+	assign o_led3 = otherLEDs[3];
+	assign o_led2 = otherLEDs[2];
+	assign o_led1 = otherLEDs[1];
+	assign o_led0 = redblinkct[REDBLINKBITS-1];
+
+	
+	
 	// **************** inputs for dip swicth and load button. Output for the actual blinky LED!
 
 
@@ -28,7 +51,7 @@ module prewish_controller(
 
     wire strobe;
     wire[7:0] data;
-    wire led;         //active high LED
+    wire o_led;         //active high LED
     reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
     reg[7:0] mask=8'b00000000;  //DAT_I
 
@@ -86,14 +109,14 @@ module prewish_controller(
     //    output o_led
     //);
     
-	parameter BLINKY_MASK_CLK_BITS = 3;			//default for short sim
+	parameter BLINKY_MASK_CLK_BITS = NEWMASK_CLK_BITS - 6;	//default for build, swh //3;			//default for short sim
 	//short sim version prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
 	prewish_blinky #(.SYSCLK_DIV_BITS(BLINKY_MASK_CLK_BITS)) blinky (		//can I do this to cascade parameterization from controller decl in prewish_tb? looks like!
         .CLK_I(CLK_O),
         .RST_I(RST_O),
         .STB_I(strobe),
         .DAT_I(data),
-        .o_led(led)
+		.o_led(o_led)
     );    
 	
 	//so ok actual works!
@@ -143,18 +166,21 @@ module prewish_controller(
 	//what if I did a great big dividey clock that drives the initial version, pick a new mask every 5 seconds or so.
 	//12MHz / 5Hz = 2,400,000, so could do a 2M divider and be in the hideyallpark.
 	//that's 21 bits, yes? that sounds like too few. aha, bc we don't want 5Hz, we want 1/5Hz, so do like 26 bits.
-	parameter NEWMASK_CLK_BITS=26;
+	//25 is my latest guess.
+	parameter NEWMASK_CLK_BITS=25;		//default for "build"
 	reg [NEWMASK_CLK_BITS-1:0] newmask_clk_ct = 0;
+	reg newmask_hi_last = 0;
 	
 	always @(posedge CLK_O) begin
 		if (~RST_O) begin
 			newmask_clk_ct <= newmask_clk_ct + 3;  //was 1, try to stir up
+			newmask_hi_last <= newmask_clk_ct[NEWMASK_CLK_BITS-1];		//FOR SPOTTING EDGE IN STATE MACHINE hopework must match the wire assignment below
 		end else begin
 			newmask_clk_ct <= 0;
 		end
 	end
 	
-	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable, hits neatly on edges of LED cycle
+	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable, 
 	//how to fudge it out a bit? Or just make it not a NRN.
 	
 	
@@ -216,7 +242,9 @@ module prewish_controller(
 		endcase
 		
 		newmask_index <= newmask_index + 1;
-		newmask_state <= 2'b10;
+		//can't assign to stuff in two different clockyblocks! 
+		//newmask_state <= 2'b10;
+		//newmask_flag <= 1;			//does this respond fast enough? Should be no different than assigning the state
 	end
 	
 	always @(posedge CLK_O) begin
@@ -227,10 +255,15 @@ module prewish_controller(
 		end else begin
 			case(newmask_state)
 				2'b00: begin
-					// do nothing
+					// do nothing unless it's time to go to 10
+					if(newmask_hi_last != newmask_clk_ct[NEWMASK_CLK_BITS-1]) begin		//see if that detects a  newmask clk edge
+						newmask_state <= 2'b10;
+					end
 				end
 				
 				2'b10: begin
+					// lower newmask_flag so we don't dump right back in here from 00
+					//oops, multiple drivers. Do we need to do this? newmask_flag <= 0;
 					// raise strobe
 					mnt_stb <= 1;
 					newmask_state <= 2'b11;

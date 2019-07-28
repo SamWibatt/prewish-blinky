@@ -3,3 +3,5 @@
 *.fst
 *_out.txt
 *_err.txt
+*.bin
+
