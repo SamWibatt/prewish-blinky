@@ -154,6 +154,21 @@ module prewish_controller(
 	
 	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework
 	
+	
+	//some data
+	/* doesn't work, just use another counter and case
+	byte [0:7] masks = {
+		8'b10000000,
+		8'b10100000,
+		8'b10101000,
+		8'b11111111,
+		8'b11010100,
+		8'b11010101,
+		8'b11001100,
+		8'b11100000
+	};
+	*/
+	
 	//here we're missing the goods, not too much to do. Just need a little state machine!
 	//- reset/initial, await... hm.
 	// we don't want a state machine running at newmask_clk pace - we want to load a new mask at that pace and then touch off a
@@ -161,18 +176,50 @@ module prewish_controller(
 	//ok I think it works!
 	
 	reg [1:0] newmask_state = 2'b00;
-	
+	reg [2:0] newmask_index = 3'b000;		//kludgy thing to pick a mask via hardcodiness bc just a test and I don't want to dig into language
 	
 	always @(posedge newmask_clk) begin
 		//GENERATE A NEW MASK and touch off the little statey below
 		//but we don't want to wait until it starts... or do we?
-		mask <= mask -1;		//FIND A CLEVERER WAY TO MAKE UP NEW MASKS
+		//mask <= mask -1;		//FIND A CLEVERER WAY TO MAKE UP NEW MASKS
+		// see e.g. https://stackoverflow.com/questions/40657508/declaring-an-array-of-constant-with-verilog
+		//nope
+		//just do a little counter and case and hardcodey assignment
+		case(newmask_index)
+			3'b000: begin
+				mask <= 8'b10000000;
+			end
+			3'b001: begin
+				mask <= 8'b10100000;
+			end
+			3'b010: begin
+				mask <= 8'b10101000;
+			end
+			3'b011: begin
+				mask <= 8'b11111111;
+			end
+			3'b100: begin
+				mask <= 8'b11010100;
+			end
+			3'b101: begin
+				mask <= 8'b11010101;
+			end
+			3'b110: begin
+				mask <= 8'b11001100;
+			end
+			3'b111: begin
+				mask <= 8'b11100000;
+			end
+		endcase
+		
+		newmask_index <= newmask_index + 1;
 		newmask_state <= 2'b10;
 	end
 	
 	always @(posedge CLK_O) begin
 		if (RST_O) begin
 			newmask_state <= 2'b00;
+			newmask_index = 3'b000;
 			mask <= 0;
 		end else begin
 			case(newmask_state)

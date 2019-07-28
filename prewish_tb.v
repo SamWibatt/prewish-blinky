@@ -47,7 +47,7 @@ module prewish_tb;
     //    output CLK_O
     //           );
 
-    prewish_controller #(.NEWMASK_CLK_BITS(7)) controller(
+    prewish_controller #(.NEWMASK_CLK_BITS(9)) controller(
         .i_clk(clk),
         .RST_O(reset),
         .CLK_O(sysclk)
