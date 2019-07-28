@@ -86,7 +86,9 @@ module prewish_controller(
     //    output o_led
     //);
     
-    prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
+	parameter BLINKY_MASK_CLK_BITS = 3;			//default for short sim
+	//short sim version prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
+	prewish_blinky #(.SYSCLK_DIV_BITS(BLINKY_MASK_CLK_BITS)) blinky (		//can I do this to cascade parameterization from controller decl in prewish_tb? looks like!
         .CLK_I(CLK_O),
         .RST_I(RST_O),
         .STB_I(strobe),
