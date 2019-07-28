@@ -8,8 +8,11 @@ yosys "$proj".ys
 nextpnr-ice40 --json "$proj".json --pcf "$proj".pcf --asc "$proj".asc
 icepack "$proj".asc "$proj".bin
 icebox_vlog "$proj".asc > "$proj"_chip.v
-iverilog -o "$proj"_tb "$proj"_chip.v "$proj"_tb.v
-vvp -N ./"$proj"_tb
+
+# HEREAFTER SIMULATION STUFF I DON'T KNOW HOW TO DO - does it need to be done for pnr/iceprog?
+#iverilog -o "$proj"_tb "$proj"_chip.v "$proj"_tb.v
+#vvp -N ./"$proj"_tb
+
 # use
-# iceprog blinky.bin
+# iceprog prewish.bin
 # to send the binary to the chip. iceprog -v shows LOTS of info 

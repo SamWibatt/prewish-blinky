@@ -1,4 +1,3 @@
-#read_verilog prewish.v - maybe replaced by controller
 read_verilog prewish_mentor.v
 read_verilog prewish_blinky.v
 read_verilog prewish_controller.v
