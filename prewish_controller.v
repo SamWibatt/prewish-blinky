@@ -20,7 +20,7 @@ module prewish_controller(
 	// registers for the non-blinky LED. one of which will be used to do a super simple "I'm Alive" blinky. 
 	// others need to be driven low, I think.
 	reg [3:0] otherLEDs = 0;
-	parameter REDBLINKBITS = 23;			//11 = now I'm getting a thing where the red led is on seemingly continuous
+	parameter REDBLINKBITS = 23;			//11 = now I'm getting a thing where the red led is on seemingly continuous, 21 is fastish, 23 not bad but still kinda fast
 	
 	//super elementary blinky LED, divide clock down by about 4 million = 22 bits? let's mess with it
 	reg[REDBLINKBITS-1:0] redblinkct = 0;
@@ -167,7 +167,9 @@ module prewish_controller(
 	//12MHz / 5Hz = 2,400,000, so could do a 2M divider and be in the hideyallpark.
 	//that's 21 bits, yes? that sounds like too few. aha, bc we don't want 5Hz, we want 1/5Hz, so do like 26 bits.
 	//25 is my latest guess.
-	parameter NEWMASK_CLK_BITS=25;		//default for "build"
+	//if 23 is a nice brisk alive-blinky, 25 is way too few for newmask. alive is ~3Hz posedges, we want maybe 1/16th of that, so let's try
+	//27
+	parameter NEWMASK_CLK_BITS=27;		//default for "build"
 	reg [NEWMASK_CLK_BITS-1:0] newmask_clk_ct = 0;
 	reg newmask_hi_last = 0;
 	
