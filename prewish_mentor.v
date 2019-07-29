@@ -53,7 +53,7 @@ module prewish_mentor(
                     strobe_reg <= 0;
                     if(STB_I == 1) begin
                         alivereg <= ~alivereg;  //toggle alive-reg for debug
-                        dat_reg <= DAT_I;       //load data from input pins to output register
+                        dat_reg <= 8'b10110100;	//DEBUG TEST WAS DAT_I;       //load data from input pins to output register
                         state <= 2'b01;         //advance to 01
                     end
                 end
