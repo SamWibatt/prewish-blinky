@@ -28,9 +28,13 @@ module prewish_controller(
 		redblinkct <= redblinkct + 1;
 	end
 	
+	//now let's try alive leds for the modules
+	wire blinky_alive;
+	wire mentor_alive;
+	
 	assign o_led3 = otherLEDs[3];
-	assign o_led2 = otherLEDs[2];
-	assign o_led1 = otherLEDs[1];
+	assign o_led2 = mentor_alive;	//otherLEDs[2];
+	assign o_led1 = blinky_alive; //otherLEDs[1];
 	assign o_led0 = redblinkct[REDBLINKBITS-1];
 
 	
@@ -98,7 +102,8 @@ module prewish_controller(
         .STB_O(strobe),
         .DAT_O(data),
         .STB_I(mnt_stb),        //then here is the student that takes direction from testbench
-        .DAT_I(mask)
+		.DAT_I(mask),
+		.o_alive(mentor_alive)
     );
 
     //module prewish_blinky (
@@ -116,6 +121,7 @@ module prewish_controller(
         .RST_I(RST_O),
         .STB_I(strobe),
         .DAT_I(data),
+		.o_alive(blinky_alive),
 		.o_led(o_led)
     );    
 	

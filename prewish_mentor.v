@@ -21,11 +21,14 @@ module prewish_mentor(
     output STB_O,
     output[7:0] DAT_O,
     input STB_I,        //then here is the student that takes direction from testbench
-    input[7:0] DAT_I
+    input[7:0] DAT_I,
+    output o_alive      // debug outblinky
 );
     reg[1:0] state = 2'b00;
     reg strobe_reg = 0;
     reg[7:0] dat_reg = 8'b00000000; 
+    
+    reg alivereg = 0;           //debug thing to toggle alive-LED when strobes happen?
     
     //HERE IS THERE SOME WAY FOR ME TO LAUNDER THE POSSIBLY ASYNC INPUTS?
     //OR SINCE WE'RE BEING WISHBONEY SHOULD I ASSUME THEY'RE SYNCHRONIZED?
@@ -49,8 +52,9 @@ module prewish_mentor(
                     //otherwise just stay here
                     strobe_reg <= 0;
                     if(STB_I == 1) begin
-                        dat_reg <= DAT_I;   //load data from input pins to output register
-                        state <= 2'b01;      //advance to 01
+                        alivereg <= ~alivereg;  //toggle alive-reg for debug
+                        dat_reg <= DAT_I;       //load data from input pins to output register
+                        state <= 2'b01;         //advance to 01
                     end
                 end
 
@@ -81,5 +85,6 @@ module prewish_mentor(
     assign STB_O = strobe_reg;      //is this how I should do this? Similar seems to work with reset... hm. Well, see what we get
     assign DAT_O = dat_reg;         //and is this how you send data?
     
+    assign o_alive = ~alivereg;      // debug LED should toggle when strobe happens - the ~ should make it start out on
 endmodule
 

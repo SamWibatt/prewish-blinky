@@ -25,6 +25,7 @@ module prewish_blinky (
     input RST_I,
     input STB_I,
     input[7:0] DAT_I,
+    output o_alive,         // "I'm-alive" signal out, can do blinky or wev
     output o_led
 );
     //I think inputs are assumed to be wires?    
@@ -95,6 +96,9 @@ module prewish_blinky (
     //see if I need a wire to drive parent's LED - doesn't seem to have been necessary, but maybe keep
     assign o_led = ledreg;
 
+    //debug thing, send out an "I'm alive" signal to caller. Here let's try at the mask roll rate
+    assign o_alive = ckdiv[SYSCLK_DIV_BITS-1];
+    
     /* non-divided version
     always @(posedge CLK_I) begin
         if(RST_I == 1) begin            // reset case, just keep the mask pasted down
