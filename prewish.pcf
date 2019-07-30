@@ -1,4 +1,4 @@
-set_io o_led 95
+set_io the_led 95
 set_io o_led0 99
 set_io o_led1 98
 set_io o_led2 97

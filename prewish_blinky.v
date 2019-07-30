@@ -44,7 +44,7 @@ module prewish_blinky (
     //see if we can avoid lagging by doing it st the clock ... rises when ckdiv is 0 and is just a pulse?
     //SEEMS TO WORK JUST FINE
     assign mask_clk = ckdiv == 1;   //ckdiv[SYSCLK_DIV_BITS-1];       
-    reg ledreg = 0;     //see if can do *********** possibug
+    reg ledreg = 0;    //register for synching LED
 
     //ok, adding to sensitivity list. mask_clk doesn't really need to be routed like a clock,
     //and I'm trying to get finer grained response to the strobe and reset, yes?
@@ -79,6 +79,7 @@ module prewish_blinky (
                 ckdiv <= 0;
                                  // *********possibug
                 ledreg <= 0;        // shut off active high LED during load
+                //assiging a constant 8'b10100000 here DOES work, assigning DAT_I doesn't.
                 mask <= DAT_I;
             end else begin
                 ckdiv <= ckdiv + 1;
@@ -94,9 +95,12 @@ module prewish_blinky (
     end
     //pre-sync version assign o_led = mask[7];
     //see if I need a wire to drive parent's LED - doesn't seem to have been necessary, but maybe keep
+    //doing this DOES work: assign o_led = ckdiv[SYSCLK_DIV_BITS-1];
+    //assigning to ledreg and mask[7] don't
     assign o_led = ledreg;
 
     //debug thing, send out an "I'm alive" signal to caller. Here let's try at the mask roll rate
+    //putting this to ledreg didn't work
     assign o_alive = ckdiv[SYSCLK_DIV_BITS-1];
     
     /* non-divided version

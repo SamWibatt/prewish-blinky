@@ -10,7 +10,7 @@ module prewish_controller(
     input i_clk, 
 //    output RST_O,               //wy not use the wishbone name - and maybe even bring these out to pins could be fun for testing with that little logic analyzer
 //    output CLK_O                //"
-	output o_led,					//this is THE LED, the green one
+	output the_led,					//this is THE LED, the green one
 	output o_led0,						//these others are just the other LEDs on the board and they go to 0. except perhaps for other status things.
 	output o_led1,
 	output o_led2,
@@ -35,7 +35,7 @@ module prewish_controller(
 	assign o_led3 = otherLEDs[3];
 	assign o_led2 = mentor_alive;	//otherLEDs[2];
 	assign o_led1 = blinky_alive; //otherLEDs[1];
-	assign o_led0 = redblinkct[REDBLINKBITS-1];
+	assign o_led0 = redblinkct[REDBLINKBITS-1];		//controller_alive, basically
 
 	
 	
@@ -55,7 +55,7 @@ module prewish_controller(
 
     wire strobe;
     wire[7:0] data;
-    wire o_led;         //active high LED
+    //wire the_led;         //active high LED
     reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
     reg[7:0] mask=8'b00000000;  //DAT_I
 
@@ -113,6 +113,28 @@ module prewish_controller(
     //    input[7:0] DAT_I,
     //    output o_led
     //);
+	
+	/* ATM the_led is not reaching out to the actual LED
+	build emits this:
+	Info: constrained 'the_led' to bel 'X13/Y9/io1'
+	Info: constrained 'o_led0' to bel 'X13/Y12/io1'
+	Info: constrained 'o_led1' to bel 'X13/Y12/io0'
+	Info: constrained 'o_led2' to bel 'X13/Y11/io1'
+	Info: constrained 'o_led3' to bel 'X13/Y11/io0'
+	Info: constrained 'i_clk' to bel 'X0/Y8/io1'
+	
+	doesn't seem to be as informative as hoped
+
+	doing this DOES make the green LED blink along with the mask_clk led: assign o_led = ckdiv[SYSCLK_DIV_BITS-1]; so there's nothing wrong with the linkage back.
+
+	Changing this in blinky:
+    assign o_alive = ckdiv[SYSCLK_DIV_BITS-1];
+	to assigning it to ledreg didn't work, so something is wrong with the ledreg logic somewhere.
+	assigning it to mask[7] likewise.
+	ASSIGNING MASK TO A CONSTANT ON STROBE INSTEAD OF TO DAT_I DOES WORK, THOUGH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	so the problem is maybe with DAT_I getting communicated from the mentor
+	*/
+	
     
 	parameter BLINKY_MASK_CLK_BITS = NEWMASK_CLK_BITS - 6;	//default for build, swh //3;			//default for short sim
 	//short sim version prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
@@ -122,7 +144,7 @@ module prewish_controller(
         .STB_I(strobe),
         .DAT_I(data),
 		.o_alive(blinky_alive),
-		.o_led(o_led)
+		.o_led(the_led)
     );    
 	
 	//so ok actual works!
@@ -177,12 +199,12 @@ module prewish_controller(
 	//27
 	parameter NEWMASK_CLK_BITS=27;		//default for "build"
 	reg [NEWMASK_CLK_BITS-1:0] newmask_clk_ct = 0;
-	reg newmask_hi_last = 0;
+	//reg newmask_hi_last = 0;
 	
 	always @(posedge CLK_O) begin
 		if (~RST_O) begin
 			newmask_clk_ct <= newmask_clk_ct + 3;  //was 1, try to stir up
-			newmask_hi_last <= newmask_clk_ct[NEWMASK_CLK_BITS-1];		//FOR SPOTTING EDGE IN STATE MACHINE hopework must match the wire assignment below
+			//newmask_hi_last <= newmask_clk_ct[NEWMASK_CLK_BITS-1];		//FOR SPOTTING EDGE IN STATE MACHINE hopework must match the wire assignment below
 		end else begin
 			newmask_clk_ct <= 0;
 		end

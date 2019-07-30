@@ -71,7 +71,7 @@ module prewish_tb;
         .i_clk(clk),
         //.RST_O(reset),
         //.CLK_O(sysclk)
-        .o_led(led),
+        .the_led(led),
         .o_led0(led0),
         .o_led1(led1),
         .o_led2(led2),
