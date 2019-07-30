@@ -65,8 +65,9 @@ module prewish_tb;
     // one problem with this organization is that I can't get at the blinky's parameter - can I? Can I add a param to controller that
     // passes it along? Let us try. We want a blinky mask clock to be about 3 full cycles of 8... let's say 32x as fast as newmask clk so 5 fewer bits?
     // let's try 6 - ok, that proportion looks not bad!
+    // but in practice I did 7 - so let's do that here
     parameter CTRL_MASK_CLK_BITS=16; //20;    //26 is "real?";  FROM CALCS IN THE LOOP BELOW I THINK 25 WILL BE IT     //works at 16 and 20
-    prewish_controller #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-6)) controller(
+    prewish_controller #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-7)) controller(
 
         .i_clk(clk),
         //.RST_O(reset),
