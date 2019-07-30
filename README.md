@@ -1,15 +1,17 @@
 # prewish-blinky
 
-* platform: Lattice iCEstick ice40hx1k, 
-* toolchain: icestorm
+* platform: [Lattice iCEstick ice40hx1k](http://www.latticesemi.com/en/Products/DevelopmentBoardsAndKits/iCEstick)
+* toolchain: Icestorm - [github](https://github.com/cliffordwolf/icestorm), [home page](http://www.clifford.at/icestorm/)
     * iverilog
     * yosys
-    * nextpnr 
+    * nextpnr
+    * gtkwave
+* dev system: running on a Virtualbox VM running Ubuntu 18.04, host system Windows 10 laptop
 
 ## objective
 
 * I'm new to HDLs but done a little bit of digital design
-* Learning Verilog now that there are open source tools and cheap dev hardware
+* Learning Verilog now that there are open source tools and cheap dev hardware (as of writing on 7/30/19!)
 * Ramping up to learning Wishbone b4 classic pipelined (say).
     * So I can get used to writing interconnects
     * I don't like "Master" and "Slave" so I'm calling things "Mentor" and "Student", or M and S
