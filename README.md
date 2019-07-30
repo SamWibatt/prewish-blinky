@@ -29,14 +29,15 @@
     * Simplified interconnect:
         * all active high like Wishbone
         * reset line global to the interconnect
-        * 8 bit data input to S
-        * 8 bit data output from M
+        * system clock line global
+        * 8 bit data input to S modules
+        * 8 bit data output from M modules (they can be both!)
         * strobe line
 * produce implementations of: 
     * student (S) - [prewish_blinky.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_blinky.v)
         * blinks an LED according to an 8 bit mask
     * mentor (M) - [prewish_mentor.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_mentor.v)
-        * accepts input from upstream module (here, the controller)
+        * accepts input from upstream module (here, the controller) and is therefore its student
         * delivers it to downstream S
     * controller (syscon equivalent) - [prewish_controller.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_controller.v)
         * generates reset pulse
