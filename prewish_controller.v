@@ -57,7 +57,8 @@ module prewish_controller(
     wire[7:0] data;
     //wire the_led;         //active high LED
     reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
-    reg[7:0] mask=8'b00000000;  //DAT_I
+	reg[7:0] mask=0;	//see if can do this. was 8'b00000000;  //DAT_I
+	wire[7:0] maskwires = mask;
 
 
 	// FOR THE HARDWARE VERSION THE CONTROLLER HERE GENERATES SYSCON SIGNALS ==========================================================
@@ -102,7 +103,7 @@ module prewish_controller(
         .STB_O(strobe),
         .DAT_O(data),
         .STB_I(mnt_stb),        //then here is the student that takes direction from testbench
-		.DAT_I(mask),
+		.DAT_I(mask),		//was mask - maskwires doesn't help
 		.o_alive(mentor_alive)
     );
 
@@ -136,13 +137,13 @@ module prewish_controller(
 	*/
 	
     
-	parameter BLINKY_MASK_CLK_BITS = NEWMASK_CLK_BITS - 6;	//default for build, swh //3;			//default for short sim
+	parameter BLINKY_MASK_CLK_BITS = NEWMASK_CLK_BITS - 7;	//default for build, swh //3;			//default for short sim
 	//short sim version prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
 	prewish_blinky #(.SYSCLK_DIV_BITS(BLINKY_MASK_CLK_BITS)) blinky (		//can I do this to cascade parameterization from controller decl in prewish_tb? looks like!
         .CLK_I(CLK_O),
         .RST_I(RST_O),
         .STB_I(strobe),
-        .DAT_I(data),
+		.DAT_I(data),			//should be data - making this mask didn't fix the trouble
 		.o_alive(blinky_alive),
 		.o_led(the_led)
     );    
@@ -197,14 +198,14 @@ module prewish_controller(
 	//25 is my latest guess.
 	//if 23 is a nice brisk alive-blinky, 25 is way too few for newmask. alive is ~3Hz posedges, we want maybe 1/16th of that, so let's try
 	//27
-	parameter NEWMASK_CLK_BITS=27;		//default for "build"
+	parameter NEWMASK_CLK_BITS=28;		//default for "build"
 	reg [NEWMASK_CLK_BITS-1:0] newmask_clk_ct = 0;
-	//reg newmask_hi_last = 0;
+	reg newmask_hi_last = 0;
 	
 	always @(posedge CLK_O) begin
 		if (~RST_O) begin
 			newmask_clk_ct <= newmask_clk_ct + 3;  //was 1, try to stir up
-			//newmask_hi_last <= newmask_clk_ct[NEWMASK_CLK_BITS-1];		//FOR SPOTTING EDGE IN STATE MACHINE hopework must match the wire assignment below
+			newmask_hi_last <= newmask_clk_ct[NEWMASK_CLK_BITS-1];		//FOR SPOTTING EDGE IN STATE MACHINE hopework must match the wire assignment below
 		end else begin
 			newmask_clk_ct <= 0;
 		end
@@ -244,34 +245,38 @@ module prewish_controller(
 		// see e.g. https://stackoverflow.com/questions/40657508/declaring-an-array-of-constant-with-verilog
 		//nope
 		//just do a little counter and case and hardcodey assignment
-		case(newmask_index)
-			3'b000: begin
-				mask <= 8'b10000000;
-			end
-			3'b001: begin
-				mask <= 8'b10100000;
-			end
-			3'b010: begin
-				mask <= 8'b10101000;
-			end
-			3'b011: begin
-				mask <= 8'b11111111;
-			end
-			3'b100: begin
-				mask <= 8'b11010100;
-			end
-			3'b101: begin
-				mask <= 8'b11010101;
-			end
-			3'b110: begin
-				mask <= 8'b11001100;
-			end
-			3'b111: begin
-				mask <= 8'b11100000;
-			end
-		endcase
-		
-		newmask_index <= newmask_index + 1;
+		if(RST_O) begin
+			mask <= 0;
+		end else begin
+			case(newmask_index)
+				3'b000: begin
+					mask <= 8'b10000000;
+				end
+				3'b001: begin
+					mask <= 8'b10100000;
+				end
+				3'b010: begin
+					mask <= 8'b10101000;
+				end
+				3'b011: begin
+					mask <= 8'b11111111;
+				end
+				3'b100: begin
+					mask <= 8'b11010100;
+				end
+				3'b101: begin
+					mask <= 8'b11010101;
+				end
+				3'b110: begin
+					mask <= 8'b11001100;
+				end
+				3'b111: begin
+					mask <= 8'b11100000;
+				end
+			endcase
+
+			newmask_index <= newmask_index + 1;
+		end
 		//can't assign to stuff in two different clockyblocks! 
 		//newmask_state <= 2'b10;
 		//newmask_flag <= 1;			//does this respond fast enough? Should be no different than assigning the state
@@ -280,14 +285,20 @@ module prewish_controller(
 	always @(posedge CLK_O) begin
 		if (RST_O) begin
 			newmask_state <= 2'b00;
-			newmask_index = 3'b000;
-			mask <= 0;
+			/// should this be here? Kind of a multiple assign. 
+			//*************************************************************************************************************************************************
+			//*************************************************************************************************************************************************
+			// HERE IS THE PROBLEM ! multiple assign of 0 doesn't seem to throw an error but it FUCKS THINGS UP
+			//mask <= 0;  //THIS MAY BE WHAT BROKE IT
+			//similar this:
+			//newmask_index = 3'b000;
 		end else begin
 			case(newmask_state)
 				2'b00: begin
 					// do nothing unless it's time to go to 10
 					if(newmask_hi_last != newmask_clk_ct[NEWMASK_CLK_BITS-1]) begin		//see if that detects a  newmask clk edge
 						newmask_state <= 2'b10;
+						mnt_stb <=1;		//try earlier strobe raise to communicate data from here to mentor - didn't help
 					end
 				end
 				

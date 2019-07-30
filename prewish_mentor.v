@@ -41,6 +41,9 @@ module prewish_mentor(
 
     //state machine
     always @(posedge CLK_I) begin
+        //TEMP TEST SEE IF THIS WORKS I MEAN ALL I REALLY HAVE TO DO IS ZERO THE STATE
+        //newp dat_reg <= DAT_I;       //load data from input pins to output register
+
         if(RST_I == 1) begin
             strobe_reg <= 0;
             state <= 2'b00;
@@ -53,7 +56,9 @@ module prewish_mentor(
                     strobe_reg <= 0;
                     if(STB_I == 1) begin
                         alivereg <= ~alivereg;  //toggle alive-reg for debug
-                        dat_reg <= 8'b10110100;	//DEBUG TEST WAS DAT_I;       //load data from input pins to output register
+                        //THIS FIXED IT dat_reg <= 8'b10110100;	//DEBUG TEST WAS 
+                        //temp test outcomment see @posedge clk_i above
+                        dat_reg <= DAT_I;       //load data from input pins to output register
                         state <= 2'b01;         //advance to 01
                     end
                 end
@@ -68,8 +73,10 @@ module prewish_mentor(
 
                 2'b11 : begin
                     //11 - lower STB_O, go to 00
-                    strobe_reg <= 0;
-                    state <= 2'b00;
+                    //strobe_reg <= 0;
+                    //state <= 2'b00;
+                    //let's try a wait state, just go to 10 - didn't help
+                    state <= 2'b10;
                 end
 
                 2'b10 : begin
