@@ -33,13 +33,16 @@
         * 8 bit data output from M
         * strobe line
 * produce implementations of: 
-    * student (S)
+    * student (S) - [prewish_blinky.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_blinky.v)
         * blinks an LED according to an 8 bit mask
-    * mentor (M)
+    * mentor (M) - [prewish_mentor.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_mentor.v)
         * accepts input from upstream module (here, the controller)
         * delivers it to downstream S
-    * controller (syscon equivalent)
+    * controller (syscon equivalent) - [prewish_controller.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_controller.v)
         * generates reset pulse
         * generates interconnect system clock
         * accept input from user via 8 bit DIP switch and a "load" button
             * _initial version iterates through a list of predefined masks_
+    * input handler - [prewish_debounce.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_debounce.v)
+        * broken atm 
+    
