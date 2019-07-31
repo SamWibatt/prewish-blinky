@@ -1,5 +1,7 @@
 # prewish-blinky
 
+### note: I'm a beginner with programmable logic. If you are, too, be aware I'm not yet setting good examples. If you're an expert, I welcome your critiques!
+
 * platform: [Lattice iCEstick ice40hx1k](http://www.latticesemi.com/en/Products/DevelopmentBoardsAndKits/iCEstick)
 * toolchain: Icestorm - [github](https://github.com/cliffordwolf/icestorm), [home page](http://www.clifford.at/icestorm/)
     * iverilog
