@@ -59,12 +59,13 @@ module prewish_debounce(
     reg[1:0] state = 2'b00;		//state machine state
     reg strobe_o_reg = 0;		//for letting state machine send STB_O
     reg alivereg = 0;           //debug thing to toggle alive-LED when strobes happen?
+    reg [7:0] dat_reg = 8'b0;   //for saving the switch state for return to caller
 	
 	reg[7:0] button_state = 8'b0;	// button state (not to be confused with state machine state) - ACTIVE HIGH even though inputs are active low 
 	
 	//here are the little mechanisms that make a single input work, WILL BE REFACTORED INTO AN ARRAY OR FOR LOOP OR SOMETHING
 	wire button_wire;
-	debounce db(iN_button,i_dbclock,button_wire)			//so this makes it so button_wire always has the "current" bit, synched through 2 layers of ff.
+    debounce db(iN_button,i_dbclock,button_wire);			//so this makes it so button_wire always has the "current" bit, synched through 2 layers of ff.
 	
 	//so here shift button wire into the status register!
 	//THIS IS GOING TO LOOK A LOT LIKE PREWISH_MENTOR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -123,7 +124,7 @@ module prewish_debounce(
     assign STB_O = strobe_o_reg;      //is this how I should do this? Similar seems to work with reset... hm. Well, see what we get
     assign DAT_O = dat_reg;         //and is this how you send data? seems to have an extra assign (state -> dat_reg), but who knows when state might have changed... let's keep an eye on
     
-    assign o_alive = ~alivereg;      // debug LED should toggle when strobe happens - the ~ should make it start out on
+    assign o_alive = ~alivereg;      // debug LED should toggle when strobe happens - the ~ should make it start out on 1, yes?
 	
 
 endmodule
