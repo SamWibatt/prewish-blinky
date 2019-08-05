@@ -37,7 +37,7 @@ module debounce(input reset, input pb_1,slow_clk,output pb_out);
     my_dff d1(reset, slow_clk, pb_1,Q1 );
     my_dff d2(reset, slow_clk, Q1,Q2 );
 	assign Q2_bar = ~Q2;
-	assign pb_out = Q1 & Q2_bar;            //so... what does this do?
+	assign pb_out = Q1 & Q2_bar;            //so... what does this do? if it is an edge detector. ???
 	//end need a chunk like these 4
 endmodule
 
