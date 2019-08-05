@@ -12,7 +12,7 @@ module my_dff(input reset, input DFF_CLOCK, D, output Q);
         if(~reset) begin
             Q <= D;
         end else begin
-            Q <= 0;
+            Q <= 1;         //try this for reset logic w/active low button
         end
     end
 endmodule
@@ -37,7 +37,7 @@ module debounce(input reset, input pb_1,slow_clk,output pb_out);
     my_dff d1(reset, slow_clk, pb_1,Q1 );
     my_dff d2(reset, slow_clk, Q1,Q2 );
 	assign Q2_bar = ~Q2;
-	assign pb_out = Q1 & Q2_bar;
+	assign pb_out = Q1 & Q2_bar;            //so... what does this do?
 	//end need a chunk like these 4
 endmodule
 
@@ -108,10 +108,10 @@ module prewish_debounce(
                             //r_Shift_With_For[ii+1] <= r_Shift_With_For[ii];
                             //dat_reg[ii] <= ~button_state[ii];
                         //end
-                        //feh, that didn't work either, let's just do it dumb
+                        //feh, that didn't work either, gets errors about ii whether I call it integer or reg or whatever so for now let's just do it dumb
                         //this doesn't appear to be communicating anything to button_state OR dat_reg. Let's move it to the next state...? Would that make it too late for data to be ready when strobe goes high?
                         //OH WAIT I WAS NEVER ADVANCING STATES
-                        // this is still not assigning anything - try below again, nope
+                        // actually, I think it IS working, it's just my testbench case isn't very interesting.
                         dat_reg[0] <= ~button_state[0];
                         dat_reg[1] <= ~button_state[1];
                         dat_reg[2] <= ~button_state[2];
@@ -128,17 +128,6 @@ module prewish_debounce(
                 2'b01 : begin
                     //01 - if STB_I is low, advance to 11 and raise STB_O
                     if(~STB_I) begin
-                        /*
-                        //temp try this here may need to move the strobe raise down a state and use all 4 states... but it doesn't work here either.
-                        dat_reg[0] <= ~button_state[0];
-                        dat_reg[1] <= ~button_state[1];
-                        dat_reg[2] <= ~button_state[2];
-                        dat_reg[3] <= ~button_state[3];
-                        dat_reg[4] <= ~button_state[4];
-                        dat_reg[5] <= ~button_state[5];
-                        dat_reg[6] <= ~button_state[6];
-                        dat_reg[7] <= ~button_state[7];
-                        */
                         strobe_o_reg <= 1;
                         state <= 2'b11;
                     end

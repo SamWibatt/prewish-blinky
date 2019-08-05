@@ -125,6 +125,8 @@ module prewish_debounce_tb;
 	reg[7:0] data_to_db = 0;
 	reg strobe_to_db = 0;
 	
+	reg button_raw = 0;		//active low pin value for button
+	
 	prewish_debounce db(
 		.CLK_I(clk),
 		.RST_I(reset),
@@ -132,7 +134,7 @@ module prewish_debounce_tb;
 		.DAT_O(data_from_db),
 		.STB_I(strobe_to_db),        //then here is the student that takes direction from testbench
 		.DAT_I(data_to_db),
-		.iN_button(noisybit),		 // active low input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
+		.iN_button(button_raw),		 // first test just used noisybit here. active low input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
 		.i_dbclock(slow_clk),		// debounce (slow) clock 
 		//output ACK_O,		// do I need this? let's say not, for the moment; I think it's for stuff that might not work right away and will ping back later with results?
 		.o_alive(db_alive)      // debug outblinky
@@ -149,9 +151,16 @@ module prewish_debounce_tb;
     end
 
     initial begin
-		//OK! send the strobe that causes the button to be read.
-		#17 strobe_to_db = 1;
-		#1 strobe_to_db = 0;
+		#1 button_raw = 1;		//start off with button "off" (active low)
+		//first test with noisybit being just random crap as the button input
+		////OK! send the strobe that causes the button to be read.
+		//#17 strobe_to_db = 1;
+		//#1 strobe_to_db = 0;
+		//new test cases:
+		//I think with current settings we get posedges of slow_clk every 256 clk cycles
+		//so, if we do a button at 300 and off at 400, it shouldn't ever make it through both FFs, so it's a pulse too narrow to debounce
+		#300 button_raw = 0;
+		#400 button_raw = 1;
         #128000 $finish;
     end
 
