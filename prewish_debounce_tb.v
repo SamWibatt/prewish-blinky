@@ -3,6 +3,42 @@
 // kind of ok `timescale 100ns/10ns
 `timescale 100ns/100ns
 
+
+// APP SPECIFIC THINGS ===========================================================================================================================================
+// like here I will make up a modulito that just emits "noisy," i.e. 1-bit random, signal at the frequency of clk.
+// simulates button bounce.
+// per https://www.quora.com/What-would-be-the-verilog-code-for-8-bit-linear-feedback-shift-register here is an 8 bit lfsr
+// slight mods like changing reset signal name to "reset" from "rst"
+// feh, these look very repeaty, maybe the thing isn't to assign to one bit - well, sampling out[0] gives us the feedback bit, which is pretty wiggly
+// if the clock is enough faster than slowclk this looks pretty noisy
+module lfsr8 (out, clk, reset);
+	output reg [7:0] out = 0;				//doesn't work with 0, which is why reset block below does the 8'hff, but for that first clock tick we need something here to avoid X
+	input clk, reset;
+	wire feedback;
+	//assign feedback = ~(out[7] ^ out[6]);		//one below uses different taps, if wanna try - yeah, let's try them
+	assign feedback = out[4] ^ out[2];  // these are taps (depends on polynomial used)
+	always @(posedge clk)		//original had, negedge reset) and used blocking (? the bare = kind) assigns. Also that means reset is active low, which mine isn't.
+	begin
+		if (reset) begin				//sean made reset active high
+			out <= 8'h7F;				//orig 7'hFF;		//sean adds <; he had 7'h not sure why, throws a warning re truncation. Might have been going for 7F? FF seems to get glued in place forever. 7F appears to work
+		end	else begin
+			out <= {out[6:0],feedback};		//sean adds <
+		end
+	end
+endmodule	
+/* another one that looks quite similar
+reg [7:0] lfsr;  // lfsr register
+wire bit;			//original had reset declared here too, but I generate my own
+assign bit = lfsr[4] ^ lfsr[2];  // these are taps (depends on polynomial used)
+always@(posedge clk) begin
+	if (reset)
+		 lfsr <= 8'hFF;   // lfsr must be non-zero to work. Sean notes might want to populate with a different seed, but this should be ok for the task at hand and several others!
+	else
+		 lfsr <= {lfsr[6:0], bit};
+end
+*/
+
+
 // Main module -----------------------------------------------------------------------------------------
 
 module prewish_debounce_tb;
@@ -50,6 +86,23 @@ module prewish_debounce_tb;
     wire[7:0] data;
 
 	// END TESTBENCH BOILERPLATE =====================================================================================================================================
+	
+	wire[7:0] randwire;			//not sure if I can use regs declared here or if that makes them get multiply driven or what - figure out. So I will try reg and swh
+	//nope, not regs
+	/*
+		prewish_debounce_tb.v:87: error: reg rando; cannot be driven by primitives or continuous assignment.
+		prewish_debounce_tb.v:87: error: Output port expression must support continuous assignment.
+		prewish_debounce_tb.v:87:      : Port 1 (out) of lfsr8 is connected to rando
+	*/
+	lfsr8 rng(randwire,clk,reset);
+	
+	//then the always that makes our random signal
+	reg noisybit = 0;
+	always @(posedge clk) begin
+		noisybit <= randwire[0];		//try uppermost bit - looked ok, try one in the middle, pretty repeaty. bit 0 is "feedback" which looks pretty random, let's try it
+	end
+	
+	// THING WE'RE TESTING ===========================================================================================================================================
 	//here's what we're testing
 	// module prewish_debounce(
 	// 	input CLK_I,
@@ -63,11 +116,31 @@ module prewish_debounce_tb;
 	// 	//output ACK_O,		// do I need this? let's say not, for the moment; I think it's for stuff that might not work right away and will ping back later with results?
 	// 	output o_alive      // debug outblinky
 	// );
+	
+	wire db_alive;		//would tie to an LED if we were really running this
+	
+	wire[7:0] data_from_db;
+	wire strobe_from_db;
+	
+	reg[7:0] data_to_db = 0;
+	reg strobe_to_db = 0;
+	
+	prewish_debounce db(
+		.CLK_I(clk),
+		.RST_I(reset),
+		.STB_O(strobe_from_db),        //mentor/outgoing interface, writes to caller with current status byte
+		.DAT_O(data_from_db),
+		.STB_I(strobe_to_db),        //then here is the student that takes direction from testbench
+		.DAT_I(data_to_db),
+		.iN_button(noisybit),		 // active low input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
+		.i_dbclock(slow_clk),		// debounce (slow) clock 
+		//output ACK_O,		// do I need this? let's say not, for the moment; I think it's for stuff that might not work right away and will ping back later with results?
+		.o_alive(db_alive)      // debug outblinky
+	);	
 
+	// end THING WE'RE TESTING =======================================================================================================================================
 
-
-
-
+	// SIMULATION PROPER =============================================================================================================================================
     //bit for creating gtkwave output
     initial begin
         //uncomment the next two for gtkwave?
@@ -76,6 +149,9 @@ module prewish_debounce_tb;
     end
 
     initial begin
+		//OK! send the strobe that causes the button to be read.
+		#17 strobe_to_db = 1;
+		#1 strobe_to_db = 0;
         #128000 $finish;
     end
 

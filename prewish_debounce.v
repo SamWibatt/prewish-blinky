@@ -5,9 +5,15 @@
 
 //first this:
 // D-flip-flop for debouncing module 
-module my_dff(input DFF_CLOCK, D, output reg Q);
+// sean adds reset - and init; ffs were showing red in the simulator until a couple clocks came along
+module my_dff(input reset, input DFF_CLOCK, D, output Q);
+    reg Q = 0;      //can I initialize like this?
     always @ (posedge DFF_CLOCK) begin
-        Q <= D;
+        if(~reset) begin
+            Q <= D;
+        end else begin
+            Q <= 0;
+        end
     end
 endmodule
 
@@ -17,7 +23,8 @@ endmodule
 //the rest of this is a 2ff debouncer in the classic style and should be nice and lean.
 // I MAY NEED TO ADD A RESET
 // also may need to clock this faster than typical MCU debouncer, bc it advances the signal through a couple rounds of flip-flop.
-module debounce(input pb_1,slow_clk,output pb_out);
+// sean adds reset
+module debounce(input reset, input pb_1,slow_clk,output pb_out);
 	//wire slow_clk;
 	//clock_div u1(clk,slow_clk);		//caller will supply slow clock.
 	wire Q1,Q2,Q2_bar;
@@ -27,8 +34,8 @@ module debounce(input pb_1,slow_clk,output pb_out);
 	//for polling to pick up on
 	//can do an interrupty one later that has like direct reset button input or wev
 	//is that a good choice for a for loop, verilog-style? LOOK INTO IT!
-	my_dff d1(slow_clk, pb_1,Q1 );
-	my_dff d2(slow_clk, Q1,Q2 );
+    my_dff d1(reset, slow_clk, pb_1,Q1 );
+    my_dff d2(reset, slow_clk, Q1,Q2 );
 	assign Q2_bar = ~Q2;
 	assign pb_out = Q1 & Q2_bar;
 	//end need a chunk like these 4
@@ -65,7 +72,7 @@ module prewish_debounce(
 	
 	//here are the little mechanisms that make a single input work, WILL BE REFACTORED INTO AN ARRAY OR FOR LOOP OR SOMETHING
 	wire button_wire;
-    debounce db(iN_button,i_dbclock,button_wire);			//so this makes it so button_wire always has the "current" bit, synched through 2 layers of ff.
+    debounce db(RST_I,iN_button,i_dbclock,button_wire);			//so this makes it so button_wire always has the "current" bit, synched through 2 layers of ff.
 	
 	//so here shift button wire into the status register!
 	//THIS IS GOING TO LOOK A LOT LIKE PREWISH_MENTOR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -78,28 +85,60 @@ module prewish_debounce(
 			//IS THIS WHERE TO SHIFT STUFF INTO STATE?
 			//HARDCODE STATE 0 IS BUTTON.
 			// remember we're doing active low inputs so invert.
-			button_state[0] <= ~button_wire;
+			//button_state[0] <= ~button_wire;
+            button_state[0] <= button_wire;     //not not negating at this point bc it happens on the dat_reg assignment
+            //might need to do it below in the dat reg thing - though this seems to be getting there
 		
+            //integer ii=0;       //for for loop below
 		
             //state machine stuff
             case (state) 
                 2'b00 : begin
                     //00 - reset/initial, send all the outgoing signals low, load data advance to 01 if STB_I goes high
                     //otherwise just stay here
+                    //I think the nice thing about separate state is waiting for STB_I to be let off, so let's stay with it for now.
                     strobe_o_reg <= 0;
                     if(STB_I == 1) begin
-                        alivereg <= ~alivereg;  //toggle alive-reg for debug
+                        alivereg <= ~alivereg;  //toggle alive-reg for debug. this works for one register
                         //THIS FIXED IT dat_reg <= 8'b10110100;	//DEBUG TEST WAS 
                         //temp test outcomment see @posedge clk_i above
-                        dat_reg <= ~state;       //load data from button state to output register
-                        state <= 2'b01;         //advance to 01. Can I save a state by doing strobe_o_reg <= 1 here? I guess so, if things are sufficiently fast, try later
-						//I think the nice thing about separate state is waiting for STB_I to be let off, so let's stay with it for now.
+                        //dat_reg <= ~button_state;       //load data from button state to output register - this doesn't work, see https://stackoverflow.com/questions/29459696/verilog-how-to-negate-an-array
+                        //that doesn't work either, see instead https://www.nandland.com/vhdl/examples/example-for-loop.html - the rare synthesizable FOR!
+                        //for(ii=0; ii<7; ii=ii+1) begin
+                            //r_Shift_With_For[ii+1] <= r_Shift_With_For[ii];
+                            //dat_reg[ii] <= ~button_state[ii];
+                        //end
+                        //feh, that didn't work either, let's just do it dumb
+                        //this doesn't appear to be communicating anything to button_state OR dat_reg. Let's move it to the next state...? Would that make it too late for data to be ready when strobe goes high?
+                        //OH WAIT I WAS NEVER ADVANCING STATES
+                        // this is still not assigning anything - try below again, nope
+                        dat_reg[0] <= ~button_state[0];
+                        dat_reg[1] <= ~button_state[1];
+                        dat_reg[2] <= ~button_state[2];
+                        dat_reg[3] <= ~button_state[3];
+                        dat_reg[4] <= ~button_state[4];
+                        dat_reg[5] <= ~button_state[5];
+                        dat_reg[6] <= ~button_state[6];
+                        dat_reg[7] <= ~button_state[7];
+                        
+                        state <= 2'b01;                     //forgot this wrinkle
                     end
                 end
 
                 2'b01 : begin
                     //01 - if STB_I is low, advance to 11 and raise STB_O
                     if(~STB_I) begin
+                        /*
+                        //temp try this here may need to move the strobe raise down a state and use all 4 states... but it doesn't work here either.
+                        dat_reg[0] <= ~button_state[0];
+                        dat_reg[1] <= ~button_state[1];
+                        dat_reg[2] <= ~button_state[2];
+                        dat_reg[3] <= ~button_state[3];
+                        dat_reg[4] <= ~button_state[4];
+                        dat_reg[5] <= ~button_state[5];
+                        dat_reg[6] <= ~button_state[6];
+                        dat_reg[7] <= ~button_state[7];
+                        */
                         strobe_o_reg <= 1;
                         state <= 2'b11;
                     end
