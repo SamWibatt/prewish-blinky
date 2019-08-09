@@ -3,6 +3,9 @@
 // kind of ok `timescale 100ns/10ns
 `timescale 100ns/100ns
 
+//let's see if this can work to tell the tool chain we're simulating
+`define SIM_STEP
+
 
 // APP SPECIFIC THINGS ===========================================================================================================================================
 // like here I will make up a modulito that just emits "noisy," i.e. 1-bit random, signal at the frequency of clk.
@@ -25,7 +28,7 @@ module lfsr8 (out, clk, reset);
 			out <= {out[6:0],feedback};		//sean adds <
 		end
 	end
-endmodule	
+endmodule
 /* another one that looks quite similar
 reg [7:0] lfsr;  // lfsr register
 wire bit;			//original had reset declared here too, but I generate my own
@@ -42,7 +45,7 @@ end
 // Main module -----------------------------------------------------------------------------------------
 
 module prewish_debounce_tb;
-	
+
 
 	// TESTBENCH BOILERPLATE =========================================================================================================================================
 
@@ -54,12 +57,15 @@ module prewish_debounce_tb;
 	//and a little lump to act as the tiniest syscon ever: -----------------------------------------------
 	//from https://electronics.stackexchange.com/questions/405363/is-it-possible-to-generate-internal-reset-pulse-in-verilog-with-machxo3lf-fpga
     //tis worky, drops reset to 0 at 15 clocks
-    reg [3:0] rst_cnt = 0;
+  reg [3:0] rst_cnt = 0;
 	wire reset = ~rst_cnt[3];     // My reset is active high, original was active low; I think that's why it was called rst_n
 	always @(posedge clk)      // see if I can use the output that way
 		if( reset )               // active high reset
             rst_cnt <= rst_cnt + 1;
 	//end tiny syscon ------------------------------------------------------------------------------------
+	/* turns out debounce can't use this - but something like it might help a little bit,
+	the somewhat divided sysclk like down to a millisecond, so this prescale can save us FFs for each
+	thing what needs debounced, curently they need 17 bits for a 120Hz-ish rate.
 
 	//and a clock divider, bc I think I'm going to design my modules to use buffered clocks & therefore clock param
 	//which lets me consolidate the clock dividing and save ffs if I want to potato-stamp copies of modules all over
@@ -70,7 +76,7 @@ module prewish_debounce_tb;
 	//delete or duplicate or decorate as needed. Maybe modularize.
 	parameter SLOW_CLK_BITS=7;
 	reg [SLOW_CLK_BITS-1:0] slow_clk_ct = 0;
-	
+
 	always @(posedge clk) begin
 		if (~reset) begin
 			slow_clk_ct <= slow_clk_ct + 1;
@@ -78,15 +84,15 @@ module prewish_debounce_tb;
 			slow_clk_ct <= 0;
 		end
 	end
-	
-	wire slow_clk = slow_clk_ct[SLOW_CLK_BITS-1];			//hopework - does! but much too predictable, 
 
+	wire slow_clk = slow_clk_ct[SLOW_CLK_BITS-1];			//hopework - does! but much too predictable,
+	*/
 	//more interconnect stuff
 	wire strobe;
-    wire[7:0] data;
+  wire[7:0] data;
 
 	// END TESTBENCH BOILERPLATE =====================================================================================================================================
-	
+
 	wire[7:0] randwire;			//not sure if I can use regs declared here or if that makes them get multiply driven or what - figure out. So I will try reg and swh
 	//nope, not regs
 	/*
@@ -95,13 +101,13 @@ module prewish_debounce_tb;
 		prewish_debounce_tb.v:87:      : Port 1 (out) of lfsr8 is connected to rando
 	*/
 	lfsr8 rng(randwire,clk,reset);
-	
+
 	//then the always that makes our random signal
 	reg noisybit = 0;
 	always @(posedge clk) begin
 		noisybit <= randwire[0];		//try uppermost bit - looked ok, try one in the middle, pretty repeaty. bit 0 is "feedback" which looks pretty random, let's try it
 	end
-	
+
 	// THING WE'RE TESTING ===========================================================================================================================================
 	//here's what we're testing
 	// module prewish_debounce(
@@ -111,22 +117,22 @@ module prewish_debounce_tb;
 	// 	output[7:0] DAT_O,
 	// 	input STB_I,        //then here is the student that takes direction from testbench
 	// 	input[7:0] DAT_I,
-	// 	input iN_button,	// active low input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
-	// 	input i_dbclock,	// debounce (slow) clock 
+	// 	input i_button,	// active HIGH input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
+	//NOT ANYMORE input i_dbclock,	// debounce (slow) clock
 	// 	//output ACK_O,		// do I need this? let's say not, for the moment; I think it's for stuff that might not work right away and will ping back later with results?
 	// 	output o_alive      // debug outblinky
 	// );
-	
+
 	wire db_alive;		//would tie to an LED if we were really running this
-	
+
 	wire[7:0] data_from_db;
 	wire strobe_from_db;
-	
+
 	reg[7:0] data_to_db = 0;
 	reg strobe_to_db = 0;
-	
+
 	reg button_raw = 0;		//active low pin value for button
-	
+
 	prewish_debounce db(
 		.CLK_I(clk),
 		.RST_I(reset),
@@ -134,11 +140,11 @@ module prewish_debounce_tb;
 		.DAT_O(data_from_db),
 		.STB_I(strobe_to_db),        //then here is the student that takes direction from testbench
 		.DAT_I(data_to_db),
-		.iN_button(button_raw),		 // first test just used noisybit here. active low input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
-		.i_dbclock(slow_clk),		// debounce (slow) clock 
+		.i_button(button_raw),		 // first test just used noisybit here. active HIGH input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
+		//.i_dbclock(slow_clk),		// debounce (slow) clock
 		//output ACK_O,		// do I need this? let's say not, for the moment; I think it's for stuff that might not work right away and will ping back later with results?
 		.o_alive(db_alive)      // debug outblinky
-	);	
+	);
 
 	// end THING WE'RE TESTING =======================================================================================================================================
 
@@ -151,18 +157,12 @@ module prewish_debounce_tb;
     end
 
     initial begin
-		#1 button_raw = 1;		//start off with button "off" (active low)
-		//first test with noisybit being just random crap as the button input
-		////OK! send the strobe that causes the button to be read.
-		//#17 strobe_to_db = 1;
-		//#1 strobe_to_db = 0;
-		//new test cases:
-		//I think with current settings we get posedges of slow_clk every 256 clk cycles
-		//so, if we do a button at 300 and off at 400, it shouldn't ever make it through both FFs, so it's a pulse too narrow to debounce
-		#300 button_raw = 0;
-		#400 button_raw = 1;
-        #128000 $finish;
+		#1 button_raw = 0;		//start off with button "off" (active high)
+		#50 button_raw = 1;
+		#7 button_raw = 0;
+		#100 button_raw = 1;
+		#123 button_raw = 0;
+    #12000 $finish;
     end
 
 endmodule
-

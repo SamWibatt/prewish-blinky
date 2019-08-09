@@ -1,13 +1,14 @@
 /*
 	prewish controller first version
-	
+
 */
+`default_nettype	none
 
 
 
 // MAIN ********************************************************************************************************************************************
 module prewish_controller(
-    input i_clk, 
+    input i_clk,
 //    output RST_O,               //wy not use the wishbone name - and maybe even bring these out to pins could be fun for testing with that little logic analyzer
 //    output CLK_O                //"
 	output the_led,					//this is THE LED, the green one
@@ -17,28 +18,63 @@ module prewish_controller(
 	output o_led3
 );
 
-	// registers for the non-blinky LED. one of which will be used to do a super simple "I'm Alive" blinky. 
+  /* INPUT BUTTON -
+  per
+  https://discourse.tinyfpga.com/t/internal-pullup-in-bx/800
+
+  I may need something like this in here:
+
+  wire button;
+
+  SB_IO #(
+    .PIN_TYPE(6'b 0000_01),
+    .PULLUP(1'b 1)
+  ) button_input(
+    .PACKAGE_PIN(PIN_1),
+    .D_IN_0(button)
+  );
+
+  ****************** MAKE SURE THIS IS HOW YOU DO IT WITH HX1K
+  // per https://hackaday.io/project/7982-cat-board/log/28499-thats-going-to-be-so-easy
+  module top(inout pin);
+  		wire outen, dout, din;
+
+  		SB_IO #(
+  			.PIN_TYPE(6'b 1010_01),
+  			.PULLUP(1'b 1)
+  		) io_pin (
+  			.PACKAGE_PIN(pin),
+  			.OUTPUT_ENABLE(outen),
+  			.D_OUT_0(dout),
+  			.D_IN_0(din)
+  		);
+  	endmodule
+    Where is that documented?
+    TAKE A LOOK IN iCETechnologyLibrary.PDF IN FPGA DROPBOX FOLDER  
+  */
+
+	// registers for the non-blinky LED. one of which will be used to do a super simple "I'm Alive" blinky.
 	// others need to be driven low, I think.
 	reg [3:0] otherLEDs = 0;
 	parameter REDBLINKBITS = 23;			//11 = now I'm getting a thing where the red led is on seemingly continuous, 21 is fastish, 23 not bad but still kinda fast
-	
+
 	//super elementary blinky LED, divide clock down by about 4 million = 22 bits? let's mess with it
 	reg[REDBLINKBITS-1:0] redblinkct = 0;
 	always @(posedge i_clk) begin
 		redblinkct <= redblinkct + 1;
 	end
-	
+
 	//now let's try alive leds for the modules
 	wire blinky_alive;
 	wire mentor_alive;
-	
+
 	assign o_led3 = otherLEDs[3];
 	assign o_led2 = mentor_alive;	//otherLEDs[2];
 	assign o_led1 = blinky_alive; //otherLEDs[1];
 	assign o_led0 = redblinkct[REDBLINKBITS-1];		//controller_alive, basically
 
-	
-	
+
+
 	// **************** inputs for dip swicth and load button. Output for the actual blinky LED!
 
 
@@ -51,7 +87,7 @@ module prewish_controller(
             rst_cnt <= rst_cnt + 1;
 
 
-	// END SYSCON ========================================================================================================================	
+	// END SYSCON ========================================================================================================================
 
     wire strobe;
     wire[7:0] data;
@@ -64,7 +100,7 @@ module prewish_controller(
 	// FOR THE HARDWARE VERSION THE CONTROLLER HERE GENERATES SYSCON SIGNALS ==========================================================
 	// should this be here?
 	//thing that makes this really use a clock routing thing
-	/* let's put in test bench...?	
+	/* let's put in test bench...?
     SB_GB clk_gb (
 		.USER_SIGNAL_TO_GLOBAL_BUFFER(i_clk),
 		.GLOBAL_BUFFER_OUTPUT(CLK_O)             //can I use the output like this?
@@ -72,13 +108,13 @@ module prewish_controller(
 	*/
 	//instead do this until we have to put that back
 	assign CLK_O = i_clk;
-	
 
-	
+
+
 	/* we don't need a syscon, we are one! Think about this.
 	//from this:
     //module prewish_syscon(
-    //    input i_clk, 
+    //    input i_clk,
     //    output RST_O
     //    output CLK_O
     //           );
@@ -114,7 +150,7 @@ module prewish_controller(
     //    input[7:0] DAT_I,
     //    output o_led
     //);
-	
+
 	/* ATM the_led is not reaching out to the actual LED
 	build emits this:
 	Info: constrained 'the_led' to bel 'X13/Y9/io1'
@@ -123,7 +159,7 @@ module prewish_controller(
 	Info: constrained 'o_led2' to bel 'X13/Y11/io1'
 	Info: constrained 'o_led3' to bel 'X13/Y11/io0'
 	Info: constrained 'i_clk' to bel 'X0/Y8/io1'
-	
+
 	doesn't seem to be as informative as hoped
 
 	doing this DOES make the green LED blink along with the mask_clk led: assign o_led = ckdiv[SYSCLK_DIV_BITS-1]; so there's nothing wrong with the linkage back.
@@ -135,8 +171,8 @@ module prewish_controller(
 	ASSIGNING MASK TO A CONSTANT ON STROBE INSTEAD OF TO DAT_I DOES WORK, THOUGH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	so the problem is maybe with DAT_I getting communicated from the mentor
 	*/
-	
-    
+
+
 	parameter BLINKY_MASK_CLK_BITS = NEWMASK_CLK_BITS - 7;	//default for build, swh //3;			//default for short sim
 	//short sim version prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
 	prewish_blinky #(.SYSCLK_DIV_BITS(BLINKY_MASK_CLK_BITS)) blinky (		//can I do this to cascade parameterization from controller decl in prewish_tb? looks like!
@@ -146,8 +182,8 @@ module prewish_controller(
 		.DAT_I(data),			//should be data - making this mask didn't fix the trouble
 		.o_alive(blinky_alive),
 		.o_led(the_led)
-    );    
-	
+    );
+
 	//so ok actual works!
 	//say we have a state machine
 	//states are:
@@ -164,7 +200,7 @@ module prewish_controller(
 	// assume everything's realtime so the button error isn't going to be more than a tiny fraction of a second
 	// FPGA IS ALL ABOUT NOT HAVING YOUR CAMERA TAKE 15 SECONDS TO POWER UP you know
 	// so in here I will make a little local modulelet for the debounce and can later refactor it if wanna.
-	
+
 
 	// AFTER THIS IT'S SIMULATION STUFF
 
@@ -184,10 +220,10 @@ module prewish_controller(
         #637 mask = 8'b11001010;
         #99 mnt_stb = 1;
         #811 mnt_stb = 0;       //test long strobe
-        #711 $finish;        
+        #711 $finish;
     end
 	*/
-	
+
 	//so what this needs to do is to accept user input and send the dip switch setting along to the prewish.
 	//see prewish_debounce.v about that, it's in progress.
 	//For now, we have the reset logic above, and if I were clever I could rope this into prewish_sim_tb and use it a combination syscon/mentor thing there too.
@@ -201,7 +237,7 @@ module prewish_controller(
 	parameter NEWMASK_CLK_BITS=28;		//default for "build"
 	reg [NEWMASK_CLK_BITS-1:0] newmask_clk_ct = 0;
 	reg newmask_hi_last = 0;
-	
+
 	always @(posedge CLK_O) begin
 		if (~RST_O) begin
 			newmask_clk_ct <= newmask_clk_ct + 3;  //was 1, try to stir up
@@ -210,11 +246,11 @@ module prewish_controller(
 			newmask_clk_ct <= 0;
 		end
 	end
-	
-	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable, 
+
+	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable,
 	//how to fudge it out a bit? Or just make it not a NRN.
-	
-	
+
+
 	//some data
 	/* doesn't work, just use another counter and case
 	byte [0:7] masks = {
@@ -228,16 +264,16 @@ module prewish_controller(
 		8'b11100000
 	};
 	*/
-	
+
 	//here we're missing the goods, not too much to do. Just need a little state machine!
 	//- reset/initial, await... hm.
 	// we don't want a state machine running at newmask_clk pace - we want to load a new mask at that pace and then touch off a
 	// sysclk-rate state machine.
 	//ok I think it works!
-	
+
 	reg [1:0] newmask_state = 2'b00;
 	reg [2:0] newmask_index = 3'b000;		//kludgy thing to pick a mask via hardcodiness bc just a test and I don't want to dig into language
-	
+
 	always @(posedge newmask_clk) begin
 		//GENERATE A NEW MASK and touch off the little statey below
 		//but we don't want to wait until it starts... or do we?
@@ -277,15 +313,15 @@ module prewish_controller(
 
 			newmask_index <= newmask_index + 1;
 		end
-		//can't assign to stuff in two different clockyblocks! 
+		//can't assign to stuff in two different clockyblocks!
 		//newmask_state <= 2'b10;
 		//newmask_flag <= 1;			//does this respond fast enough? Should be no different than assigning the state
 	end
-	
+
 	always @(posedge CLK_O) begin
 		if (RST_O) begin
 			newmask_state <= 2'b00;
-			/// should this be here? Kind of a multiple assign. 
+			/// should this be here? Kind of a multiple assign.
 			//*************************************************************************************************************************************************
 			//*************************************************************************************************************************************************
 			// HERE IS THE PROBLEM ! multiple assign of 0 doesn't seem to throw an error but it FUCKS THINGS UP
@@ -301,7 +337,7 @@ module prewish_controller(
 						mnt_stb <=1;		//try earlier strobe raise to communicate data from here to mentor - didn't help
 					end
 				end
-				
+
 				2'b10: begin
 					// lower newmask_flag so we don't dump right back in here from 00
 					//oops, multiple drivers. Do we need to do this? newmask_flag <= 0;
@@ -324,6 +360,5 @@ module prewish_controller(
 			endcase
 		end
 	end
-    
-endmodule
 
+endmodule

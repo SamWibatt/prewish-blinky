@@ -11,6 +11,9 @@
 
 */
 
+`default_nettype	none
+
+
 //let's see if I can do 12 MHz
 //8.3333333333333333333333333333333e-8 seconds per tick
 // = 83.3 nanos, not real accurate
@@ -23,7 +26,7 @@
 `timescale 100ns/100ns
 
 
-//here's a cheap fake of the SB_GB module that the other tool chain uses 
+//here's a cheap fake of the SB_GB module that the other tool chain uses
 //this lets it compile!
 module SB_GB(input USER_SIGNAL_TO_GLOBAL_BUFFER, output GLOBAL_BUFFER_OUTPUT);
     assign GLOBAL_BUFFER_OUTPUT = USER_SIGNAL_TO_GLOBAL_BUFFER;
@@ -54,7 +57,7 @@ module prewish_tb;
 
 
     //module prewish_controller(
-    //    input i_clk, 
+    //    input i_clk,
     //    output RST_O
     //    output CLK_O
     //           );
@@ -77,7 +80,7 @@ module prewish_tb;
         .o_led1(led1),
         .o_led2(led2),
         .o_led3(led3)
-        
+
     );
 
     //bit for creating gtkwave output
@@ -96,7 +99,7 @@ module prewish_tb;
         #637 mnt_data = 8'b11001010;
         #99 mnt_stb = 1;
         #811 mnt_stb = 0;       //test long strobe
-        #711 $finish;       
+        #711 $finish;
         */
         //for short sim #7111 $finish;
         #1000000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
@@ -115,7 +118,7 @@ module prewish_tb;
         //+ yeah def use the -o.
         //So ok 20 bit clock looks good, and as far as timing goes - right now it's all taking 1.6 seconds, there are about 50 cycles of LED blink
         //with every 3rd or so cut off - so it's maybe... supposed to be like 48 seconds? which is 30 times 1.6 seconds, or 5 bits more on the main clock?
-        
+
         //#1000000000 $finish;      //"real" time, and probably short for that
     end
 
