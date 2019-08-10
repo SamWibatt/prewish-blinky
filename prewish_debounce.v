@@ -119,7 +119,7 @@ module prewish_debounce(
     */
     reg[1:0] state = 2'b00;		//state machine state
     reg strobe_o_reg = 0;		//for letting state machine send STB_O
-    reg alivereg = 0;           //debug thing to toggle alive-LED when strobes happen?
+    reg alivereg = 0;           //debug thing to toggle alive-LED when strobes happen? Toggle on debounced pos edge
     reg [7:0] dat_reg = 8'b0;   //for saving the switch state for return to caller
 
     reg[7:0] button_state = 8'b0;	// button state (not to be confused with state machine state) - ACTIVE HIGH even though inputs are active low
@@ -134,6 +134,15 @@ module prewish_debounce(
     `else
       debouncer deb(CLK_I, i_button, button_debounced);
     `endif
+
+
+    //can I do this to toggle alive led? I don't know if the alivereg gets the value until the NEXT
+    //posedge button_debounced ... try it if I can't get this working in the main always
+    /*
+    always @(posedge(button_debounced)) begin
+        alivereg <= ~alivereg;  //toggle alive-reg for debug. this works for one register
+    end
+    */
 
    //so here shift button wire into the status register!
    //THIS IS GOING TO LOOK A LOT LIKE PREWISH_MENTOR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -150,6 +159,10 @@ module prewish_debounce(
       //button_state[0] <= button_wire;     //not not negating at this point bc it happens on the dat_reg assignment
       //might need to do it below in the dat reg thing - though this seems to be getting there
       button_state[0] <= button_debounced;
+      //try looking for a positive edge in button_debounced. 
+      if(~button_state[0] && button_debounced) begin
+        alivereg <= ~alivereg;  //toggle alive-reg for debug.
+      end
 
       //integer ii=0;       //for for loop below
 
@@ -161,7 +174,6 @@ module prewish_debounce(
               //I think the nice thing about separate state is waiting for STB_I to be let off, so let's stay with it for now.
               strobe_o_reg <= 0;
               if(STB_I == 1) begin
-                  alivereg <= ~alivereg;  //toggle alive-reg for debug. this works for one register
                   //THIS FIXED IT dat_reg <= 8'b10110100;	//DEBUG TEST WAS
                   //temp test outcomment see @posedge clk_i above
                   //dat_reg <= ~button_state;       //load data from button state to output register - this doesn't work, see https://stackoverflow.com/questions/29459696/verilog-how-to-negate-an-array
@@ -175,6 +187,7 @@ module prewish_debounce(
                   //OH WAIT I WAS NEVER ADVANCING STATES
                   // actually, I think it IS working, it's just my testbench case isn't very interesting.
                   // NOT ACTIVE LOW ANYMORE these used to be ~button_state[n]
+                  /* do I even need this anymore? yes, to latch what was requested...? */
                   dat_reg[0] <= button_state[0];
                   dat_reg[1] <= button_state[1];
                   dat_reg[2] <= button_state[2];

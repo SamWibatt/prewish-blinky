@@ -4,3 +4,4 @@ set_io o_led1 98
 set_io o_led2 97
 set_io o_led3 96
 set_io i_clk 21
+set_io the_button 119

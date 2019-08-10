@@ -11,6 +11,7 @@ module prewish_controller(
     input i_clk,
 //    output RST_O,               //wy not use the wishbone name - and maybe even bring these out to pins could be fun for testing with that little logic analyzer
 //    output CLK_O                //"
+  input the_button,       //active LOW button? Pulled up and inverted in here. Pin 119
 	output the_led,					//this is THE LED, the green one
 	output o_led0,						//these others are just the other LEDs on the board and they go to 0. except perhaps for other status things.
 	output o_led1,
@@ -50,8 +51,35 @@ module prewish_controller(
   		);
   	endmodule
     Where is that documented?
-    TAKE A LOOK IN iCETechnologyLibrary.PDF IN FPGA DROPBOX FOLDER  
+    TAKE A LOOK IN iCETechnologyLibrary.PDF IN FPGA DROPBOX FOLDER
+    Yup, page 70 or so in that has what we need
+    and it looks like the original is ok
   */
+  /*
+  CHECK OUT https://github.com/nesl/ice40_examples/tree/master/buttons_debounce
+  / * Numpad pull-up settings for columns:
+        PIN_TYPE: <output_type=0>_<input=1>
+        PULLUP: <enable=1>
+        PACKAGE_PIN: <user pad name>
+        D_IN_0: <internal pin wire (data in)>
+     * /
+     wire keypad_c1_din;
+     SB_IO #(
+         .PIN_TYPE(6'b0000_01),
+         .PULLUP(1'b1)
+     ) keypad_c1_config (
+         .PACKAGE_PIN(keypad_c1), sean notes module dec parameter
+         .D_IN_0(keypad_c1_din)   sean notes variable in here
+     );  */
+
+  wire button_internal;
+  SB_IO #(
+    .PIN_TYPE(6'b 0000_01),     //IS THIS RIGHT? looks like it's PIN_NO_OUTPUT | PIN_INPUT (not latched or registered)
+    .PULLUP(1'b 1)
+  ) button_input(
+    .PACKAGE_PIN(the_button),   //has to be a pin in bank 0,1,2
+    .D_IN_0(button_internal)
+  );
 
 	// registers for the non-blinky LED. one of which will be used to do a super simple "I'm Alive" blinky.
 	// others need to be driven low, I think.
@@ -67,8 +95,9 @@ module prewish_controller(
 	//now let's try alive leds for the modules
 	wire blinky_alive;
 	wire mentor_alive;
+  wire debounce_alive;
 
-	assign o_led3 = otherLEDs[3];
+	assign o_led3 = debounce_alive; //otherLEDs[3];
 	assign o_led2 = mentor_alive;	//otherLEDs[2];
 	assign o_led1 = blinky_alive; //otherLEDs[1];
 	assign o_led0 = redblinkct[REDBLINKBITS-1];		//controller_alive, basically
@@ -82,6 +111,7 @@ module prewish_controller(
     //tis worky, drops RST_O to 0 at 15 seconds (with the 1 second sim tick.)
     reg [3:0] rst_cnt = 0;
     wire RST_O = ~rst_cnt[3];     // My RST_O is active high, original was active low; I think that's why it was called rst_n
+    wire CLK_O;     //avoid default_nettype error
 	always @(posedge CLK_O)      // see if I can use the output that way
 		if( RST_O )               // active high RST_O
             rst_cnt <= rst_cnt + 1;
@@ -224,8 +254,49 @@ module prewish_controller(
     end
 	*/
 
+
 	//so what this needs to do is to accept user input and send the dip switch setting along to the prewish.
-	//see prewish_debounce.v about that, it's in progress.
+	//see prewish_debounce.v about that
+
+  /*
+  module prewish_debounce(
+      input CLK_I,
+      input RST_I,
+      output STB_O,        //mentor/outgoing interface, writes to caller with current status byte
+      output[7:0] DAT_O,
+      input STB_I,        //then here is the student that takes direction from testbench
+      input[7:0] DAT_I,
+      input i_button,	// active HIGH input from button, caller presumably just passes this straight along from a pad WILL BE REFACTORED INTO AN ARRAY
+      output o_alive      // debug outblinky
+  );
+  */
+
+  //so ok here we have a debouncer I'm getting put together
+  //error atm:
+  //Mapping prewish_controller.pre_deb using prewish_debounce.
+  //ERROR: Mismatch in directionality for cell port prewish_controller.pre_deb.DAT_O: \debounce_mask <= \pre_deb.DAT_O
+  //I think I had DAT_O and DAT_I switched, thinking of DAT_O as outgoing from here, not from it.
+  //switching those, tho,
+  //ERROR: Mismatch in directionality for cell port prewish_controller.pre_deb.DAT_O: \button_state <= \pre_deb.DAT_O
+  //it was right to switch those, but I think the real prob might have been I had button_state here
+  //being registers instead of wires, and it's an output. - now do the same switch with strobe
+  //and that got it! 
+  reg debounce_in_strobe = 0;
+  reg[7:0] debounce_mask = 0;   // atm debounce doesn't do anything with the input data, may later be a mask
+  wire debounce_out_strobe;
+  wire[7:0] button_state; // = 0;
+  prewish_debounce pre_deb(
+      .CLK_I(CLK_O),
+      .RST_I(RST_O),
+      .STB_O(debounce_out_strobe),    //ack? Dunno if I wrote this
+      .DAT_O(button_state),
+      .STB_I(debounce_in_strobe),
+      .DAT_I(debounce_mask),
+      .i_button(~button_internal),         //see if I can launder active-low to active-high like this
+      .o_alive(debounce_alive)
+    );
+
+  // ORIGINAL TIMED MASK THING ================================================================================
 	//For now, we have the reset logic above, and if I were clever I could rope this into prewish_sim_tb and use it a combination syscon/mentor thing there too.
 	//so:
 	//what if I did a great big dividey clock that drives the initial version, pick a new mask every 5 seconds or so.
@@ -249,6 +320,10 @@ module prewish_controller(
 
 	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable,
 	//how to fudge it out a bit? Or just make it not a NRN.
+  // END ORIGINAL TIMED MASK THING ========================================================================
+
+
+
 
 
 	//some data

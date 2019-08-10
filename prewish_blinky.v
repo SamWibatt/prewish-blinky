@@ -44,6 +44,7 @@ module prewish_blinky (
     //-- El bit más significativo se saca por la salida, this could be the "clock" that advances the mask
     //see if we can avoid lagging by doing it st the clock ... rises when ckdiv is 0 and is just a pulse?
     //SEEMS TO WORK JUST FINE
+    wire mask_clk;      //avoid default_nettype error 
     assign mask_clk = ckdiv == 1;   //ckdiv[SYSCLK_DIV_BITS-1];
     reg ledreg = 0;    //register for synching LED
 

@@ -32,6 +32,22 @@ module SB_GB(input USER_SIGNAL_TO_GLOBAL_BUFFER, output GLOBAL_BUFFER_OUTPUT);
     assign GLOBAL_BUFFER_OUTPUT = USER_SIGNAL_TO_GLOBAL_BUFFER;
 endmodule
 
+//similar
+/*
+SB_IO #(
+  .PIN_TYPE(6'b 0000_01),     //IS THIS RIGHT? looks like it's PIN_NO_OUTPUT | PIN_INPUT (not latched or registered)
+  .PULLUP(1'b 1)
+) button_input(
+  .PACKAGE_PIN(the_button),   //has to be a pin in bank 0,1,2
+  .D_IN_0(button_internal)
+);
+*/
+module SB_IO(input wire PACKAGE_PIN, output wire D_IN_0);
+  parameter PIN_TYPE = 0;
+  parameter PULLUP = 0;
+  assign D_IN_0 = PACKAGE_PIN;
+endmodule
+
 
 // Main module -----------------------------------------------------------------------------------------
 
@@ -44,13 +60,16 @@ module prewish_tb;
     wire strobe;
     wire[7:0] data;
     wire led;         //active high LED
+    reg buttonreg = 0;    // simulated button input
     wire led0, led1, led2, led3;        //other lights on the icestick
     reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
     reg[7:0] mnt_data=8'b00000000;  //DAT_I
 
-	//thing that makes this really use a clock routing thing
+	//primitive for routing iceStick's onboard clock to a global buffer, which is good for clocks
+  //because GBs can drive a lot more little modules
+    wire CLK_O;
     SB_GB clk_gb (
-		.USER_SIGNAL_TO_GLOBAL_BUFFER(i_clk),
+		.USER_SIGNAL_TO_GLOBAL_BUFFER(clk),
 		.GLOBAL_BUFFER_OUTPUT(CLK_O)             //can I use the output like this?
     );
 
@@ -70,17 +89,17 @@ module prewish_tb;
     // let's try 6 - ok, that proportion looks not bad!
     // but in practice I did 7 - so let's do that here
     parameter CTRL_MASK_CLK_BITS=16; //20;    //26 is "real?";  FROM CALCS IN THE LOOP BELOW I THINK 25 WILL BE IT     //works at 16 and 20
-    prewish_controller #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-7)) controller(
-
+    prewish_controller
+        #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-7)) controller(
         .i_clk(clk),
         //.RST_O(reset),
         //.CLK_O(sysclk)
+        .the_button(buttonreg),
         .the_led(led),
         .o_led0(led0),
         .o_led1(led1),
         .o_led2(led2),
         .o_led3(led3)
-
     );
 
     //bit for creating gtkwave output
@@ -91,6 +110,15 @@ module prewish_tb;
     end
 
     initial begin
+        #0 buttonreg = 1;           //active low
+        //drive button! Now we can do that
+        #7 buttonreg = 0;
+        #100 buttonreg = 1;
+
+        //try one before release interval done?
+        #23 buttonreg = 0;
+        #19 buttonreg = 1;
+
         /* test from original simulated one - here we will let
         //see if I can just wait some cycles
         mnt_data = 8'b10101000;
@@ -102,7 +130,7 @@ module prewish_tb;
         #711 $finish;
         */
         //for short sim #7111 $finish;
-        #1000000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
+        #100000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
         //#16000000 $finish;             //20 bits, 80 sec, 600M vcd. Works, but huge.
         //25 bit would be 32x as long, yes? assume that much bigger, too? massive file and 80*32 sec long which is not hideorrible but
         //I don't think it's necessary.

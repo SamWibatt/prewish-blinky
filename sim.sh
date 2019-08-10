@@ -9,5 +9,5 @@ vvp prewish_tb.vvp  1>> sim_tb_out.txt 2>> sim_tb_err.txt
 #gtkwave -o does optimization of vcd to FST format, good for the big sims
 # or just do it here
 vcd2fst prewish_tb.vcd prewish_tb.fst
-rm prewish_tb.vcd
+rm -f prewish_tb.vcd
 #gtkwave -o prewish_tb.vcd &
