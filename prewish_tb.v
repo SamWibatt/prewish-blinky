@@ -61,6 +61,7 @@ module prewish_tb;
     wire[7:0] data;
     wire led;         //active high LED
     reg buttonreg = 0;    // simulated button input
+    reg[7:0] dipswicth_reg = 0; //simulated dip swicth input
     wire led0, led1, led2, led3;        //other lights on the icestick
     reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
     reg[7:0] mnt_data=8'b00000000;  //DAT_I
@@ -95,6 +96,14 @@ module prewish_tb;
         //.RST_O(reset),
         //.CLK_O(sysclk)
         .the_button(buttonreg),
+        .i_bit7(dipswicth_reg[7]),
+        .i_bit6(dipswicth_reg[6]),
+        .i_bit5(dipswicth_reg[5]),
+        .i_bit4(dipswicth_reg[4]),
+        .i_bit3(dipswicth_reg[3]),
+        .i_bit2(dipswicth_reg[2]),
+        .i_bit1(dipswicth_reg[1]),
+        .i_bit0(dipswicth_reg[0]),
         .the_led(led),
         .o_led0(led0),
         .o_led1(led1),
@@ -111,13 +120,21 @@ module prewish_tb;
 
     initial begin
         #0 buttonreg = 1;           //active low
+        #1 dipswicth_reg = 8'b01011111;         //user-swicthed mask. ACTIVE LOW. classic blink-blink
         //drive button! Now we can do that
         #7 buttonreg = 0;
         #100 buttonreg = 1;
 
         //try one before release interval done?
-        #23 buttonreg = 0;
+        #30023 buttonreg = 0;
         #19 buttonreg = 1;
+
+        //then set up some new data
+        #1 dipswicth_reg = 8'b00110011;         //user-swicthed mask ACTIVE LOW. slower steady flash
+
+        // then one that does take, in order to toggle the LED
+        #137 buttonreg = 0;
+        #75 buttonreg = 1;
 
         /* test from original simulated one - here we will let
         //see if I can just wait some cycles

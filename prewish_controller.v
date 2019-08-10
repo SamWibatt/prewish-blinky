@@ -11,7 +11,16 @@ module prewish_controller(
     input i_clk,
 //    output RST_O,               //wy not use the wishbone name - and maybe even bring these out to pins could be fun for testing with that little logic analyzer
 //    output CLK_O                //"
-  input the_button,       //active LOW button? Pulled up and inverted in here. Pin 119
+    input the_button,       //pin 44 active LOW button? Pulled up and inverted in here. Pin 119
+    input i_bit7, // 119 dip swicth swicths, active low. Will pull up but not debounce.
+    input i_bit6, // 118
+    input i_bit5, // 117
+    input i_bit4, // 116
+    input i_bit3, // 115
+    input i_bit2, // 114
+    input i_bit1, // 113
+    input i_bit0, // 112
+
 	output the_led,					//this is THE LED, the green one
 	output o_led0,						//these others are just the other LEDs on the board and they go to 0. except perhaps for other status things.
 	output o_led1,
@@ -72,14 +81,27 @@ module prewish_controller(
          .D_IN_0(keypad_c1_din)   sean notes variable in here
      );  */
 
-  wire button_internal;
-  SB_IO #(
-    .PIN_TYPE(6'b 0000_01),     //IS THIS RIGHT? looks like it's PIN_NO_OUTPUT | PIN_INPUT (not latched or registered)
-    .PULLUP(1'b 1)
-  ) button_input(
-    .PACKAGE_PIN(the_button),   //has to be a pin in bank 0,1,2
-    .D_IN_0(button_internal)
-  );
+    wire button_internal;
+    SB_IO #(
+        .PIN_TYPE(6'b 0000_01),     //IS THIS RIGHT? looks like it's PIN_NO_OUTPUT | PIN_INPUT (not latched or registered)
+        .PULLUP(1'b 1)
+    ) button_input(
+        .PACKAGE_PIN(the_button),   //has to be a pin in bank 0,1,2
+        .D_IN_0(button_internal)
+    );
+
+    //dip switch wires and i/o with pullups
+    wire[7:0] dip_swicth;
+    //can you do this with a for loop?
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit7_input(.PACKAGE_PIN(i_bit7),.D_IN_0(dip_swicth[7]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit6_input(.PACKAGE_PIN(i_bit6),.D_IN_0(dip_swicth[6]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit5_input(.PACKAGE_PIN(i_bit5),.D_IN_0(dip_swicth[5]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit4_input(.PACKAGE_PIN(i_bit4),.D_IN_0(dip_swicth[4]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit3_input(.PACKAGE_PIN(i_bit3),.D_IN_0(dip_swicth[3]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit2_input(.PACKAGE_PIN(i_bit2),.D_IN_0(dip_swicth[2]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit1_input(.PACKAGE_PIN(i_bit1),.D_IN_0(dip_swicth[1]));
+    SB_IO #(.PIN_TYPE(6'b 0000_01),.PULLUP(1'b 1)) bit0_input(.PACKAGE_PIN(i_bit0),.D_IN_0(dip_swicth[0]));
+
 
 	// registers for the non-blinky LED. one of which will be used to do a super simple "I'm Alive" blinky.
 	// others need to be driven low, I think.
@@ -95,7 +117,7 @@ module prewish_controller(
 	//now let's try alive leds for the modules
 	wire blinky_alive;
 	wire mentor_alive;
-  wire debounce_alive;
+    wire debounce_alive;
 
 	assign o_led3 = debounce_alive; //otherLEDs[3];
 	assign o_led2 = mentor_alive;	//otherLEDs[2];
@@ -202,7 +224,9 @@ module prewish_controller(
 	so the problem is maybe with DAT_I getting communicated from the mentor
 	*/
 
-
+    //NEWMASK_CLK_BITS is a throwback to when masks were just chosen by a timer instead of USER INPUT!!!!
+    //so need to get rid of it
+    parameter NEWMASK_CLK_BITS=28;		//default for "build"
 	parameter BLINKY_MASK_CLK_BITS = NEWMASK_CLK_BITS - 7;	//default for build, swh //3;			//default for short sim
 	//short sim version prewish_blinky #(.SYSCLK_DIV_BITS(3)) blinky (
 	prewish_blinky #(.SYSCLK_DIV_BITS(BLINKY_MASK_CLK_BITS)) blinky (		//can I do this to cascade parameterization from controller decl in prewish_tb? looks like!
@@ -280,11 +304,12 @@ module prewish_controller(
   //ERROR: Mismatch in directionality for cell port prewish_controller.pre_deb.DAT_O: \button_state <= \pre_deb.DAT_O
   //it was right to switch those, but I think the real prob might have been I had button_state here
   //being registers instead of wires, and it's an output. - now do the same switch with strobe
-  //and that got it! 
+  //and that got it!
   reg debounce_in_strobe = 0;
   reg[7:0] debounce_mask = 0;   // atm debounce doesn't do anything with the input data, may later be a mask
   wire debounce_out_strobe;
   wire[7:0] button_state; // = 0;
+  reg[7:0] button_streg = 0;    //for remembering button_state
   prewish_debounce pre_deb(
       .CLK_I(CLK_O),
       .RST_I(RST_O),
@@ -296,6 +321,230 @@ module prewish_controller(
       .o_alive(debounce_alive)
     );
 
+    // NEW DIP & BUTTON DRIVEN THING ==========================================================================
+    // third version: just like the broken no-fetch, but another state machine keeps button state fresh.
+    reg [1:0] fetchbuttons_state = 2'b00;
+
+    //can you have multiple alwayses hanging off one clock? Let's find out!
+    //if not, canjust move the reset block inside the other always's reset block and the
+    //case into the else part alongside the other case, why not.
+    //OR clock this on something a little bit slower.
+    always @(posedge CLK_O) begin
+        if (RST_O) begin
+            fetchbuttons_state <= 2'b00;
+            button_streg <= 8'b00000000;          //I think it's safe to assign here
+            debounce_in_strobe <= 0;
+        end else begin
+            case(fetchbuttons_state)
+                2'b00: begin
+                    fetchbuttons_state <= 2'b01;
+                end
+
+                2'b01: begin
+                    debounce_mask <= 8'b00000001;           //not used atm
+                    debounce_in_strobe <= 1;
+                    fetchbuttons_state <= 2'b11;
+                end
+
+                2'b11: begin
+                    debounce_in_strobe <= 0;               //lower strobe, idle here until get ACK
+                    if(debounce_out_strobe) begin
+                        button_streg <= button_state;       // load button state!
+                        fetchbuttons_state <= 2'b10;
+                    end
+                end
+
+                2'b10: begin
+                    //wait state bc why not - future may be clocked on something a bit slower
+                    fetchbuttons_state <= 2'b00;
+                end
+
+            endcase
+        end
+    end
+
+    //second state machine for loading the mask on positive button edge.
+    reg [1:0] loadmask_state = 2'b00;
+
+    always @(posedge CLK_O) begin
+		if (RST_O) begin
+			loadmask_state <= 2'b00;
+            mask <= 2'b00;          //I think it's safe to assign here
+		end else begin
+			case(loadmask_state)
+				2'b00: begin
+					// do nothing unless it's time to go to 10
+                    // which is when we have a positive edge on the button.
+                    //... what if this state waits for button release, then 10 waits for press?
+                    //I think that's a better way to handle it wrt reset too
+                    if (button_state[0] == 0) begin
+                        loadmask_state <= 2'b10;
+                    end
+                end
+
+                2'b10: begin
+                    // previous state waited for button release, this one waits for press.
+                    if (button_state[0] == 1) begin
+                        //mask <= dip_swicth; //I think I can assign here bc no other block assigns to it.
+                        //oh wait I want to invert bc dips active low
+                        mask[0] <= ~dip_swicth[0]; mask[1] <= ~dip_swicth[1];
+                        mask[2] <= ~dip_swicth[2]; mask[3] <= ~dip_swicth[3];
+                        mask[4] <= ~dip_swicth[4]; mask[5] <= ~dip_swicth[5];
+                        mask[6] <= ~dip_swicth[6]; mask[7] <= ~dip_swicth[7];
+						//play it safe mnt_stb <=1;		//try earlier strobe raise to communicate data from here to mentor - didn't help
+                        loadmask_state <= 2'b11;
+					end
+				end
+
+				2'b11: begin
+					// raise strobe
+					mnt_stb <= 1;
+					loadmask_state <= 2'b01;
+				end
+
+				2'b01: begin
+					// lower strobe
+					mnt_stb <= 0;
+					loadmask_state <= 2'b00;
+				end
+
+			endcase
+		end
+	end
+
+
+
+    /* broken single - loop version
+    reg [2:0] loadmask_state = 3'b000;
+
+    always @(posedge CLK_O) begin
+		if (RST_O) begin
+			loadmask_state <= 3'b000;
+            mask <= 8'b00000000;          //I think it's safe to assign here, no other block does
+            debounce_in_strobe <= 0;        //make sure we're not asking for button state
+		end else begin
+			case(loadmask_state)
+				3'b000: begin
+                    //dummy state to sit in and do nothing while reset is active.
+                    //once control comes back, segue to 001.
+                    loadmask_state <= 3'b001;
+                end
+
+                3'b001: begin
+                    //start a read of the button state.
+                    //I guess here we'd load a button mask, if we were going to do stuff like that.
+                    //let's do a dummy. Timing might be bad, need another tick before raising strobe?
+                    //or I guess the mask can be steady. Anyway, atm it does nothing.
+                    debounce_mask <= 8'b00000001;       //but paying attention only to bottom bit if we want
+                    debounce_in_strobe <= 1;
+                    loadmask_state <= 3'b011;
+                end
+
+                3'b011: begin
+                    //bring the debounce strobe down and harvest the button state once we get the ack.
+                    debounce_in_strobe <= 0;
+                    if(debounce_out_strobe) begin
+                        button_streg <= button_state;           //memorize output from button reader
+                        loadmask_state <= 3'b111;
+                    end
+                end
+
+
+                3'b111: begin
+                    //let's say we wait here until the button is released
+                    //so if it's pressed, button_streg[0] == 1, so we just go back and read the button
+                    //again.
+                    // REALLY TIGHT LOOP! but what else to do
+                    // I suppose a separate state machine could maintain button_streg
+                    //... what if this state waits for button release, then 10 waits for press?
+                    //I think that's a better way to handle it wrt reset too
+                    if (button_streg[0] == 0) begin
+                        loadmask_state <= 3'b110;
+                    end else begin
+                        loadmask_state <= 3'b001;           //jump back and read again
+                    end
+                end
+
+                3'b110: begin
+                    // previous state waited for button release, this one waits for press.
+                    ****************** WAIT THIS WON'T WORK because the state transition will have it
+                    ****************** go to the wait-for-release loop ...
+                    *** yeah, let's make a loop that just updates button state
+                    end
+                    if (button_streg[0] == 1) begin
+                        mask <= dip_swicth; //I think I can assign here bc no other block assigns to it.
+						//play it safe mnt_stb <=1;		//try earlier strobe raise to communicate data from here to mentor - didn't help
+                        loadmask_state <= 3'b010;
+					end else begin
+                        loadmask_state <= 3'b001;           //go read again
+                    end
+				end
+
+				3'b010: begin
+					// raise strobe
+					mnt_stb <= 1;
+					loadmask_state <= 3'b101;
+				end
+
+				3'b101: begin
+					// lower strobe
+					mnt_stb <= 0;
+					loadmask_state <= 3'b001;
+				end
+
+			endcase
+		end
+	end
+    */
+
+    // broken no-fetch version
+    //ok, this is all fine, but missing some stuff.
+    //like, ever fetching the button state. We need more states!
+    /*
+    reg [1:0] loadmask_state = 2'b00;
+
+    always @(posedge CLK_O) begin
+		if (RST_O) begin
+			loadmask_state <= 2'b00;
+            mask <= 2'b00;          //I think it's safe to assign here
+		end else begin
+			case(loadmask_state)
+				2'b00: begin
+					// do nothing unless it's time to go to 10
+                    // which is when we have a positive edge on the button.
+                    //... what if this state waits for button release, then 10 waits for press?
+                    //I think that's a better way to handle it wrt reset too
+                    if (button_state[0] == 0) begin
+                        loadmask_state <= 2'b10;
+                    end
+                end
+
+                2'b10: begin
+                    // previous state waited for button release, this one waits for press.
+                    if (button_state[0] == 1) begin
+                        mask <= dip_swicth; //I think I can assign here bc no other block assigns to it.
+						//play it safe mnt_stb <=1;		//try earlier strobe raise to communicate data from here to mentor - didn't help
+                        loadmask_state <= 2'b11;
+					end
+				end
+
+				2'b11: begin
+					// raise strobe
+					mnt_stb <= 1;
+					loadmask_state <= 2'b01;
+				end
+
+				2'b01: begin
+					// lower strobe
+					mnt_stb <= 0;
+					loadmask_state <= 2'b00;
+				end
+
+			endcase
+		end
+	end
+    */
+    /*
   // ORIGINAL TIMED MASK THING ================================================================================
 	//For now, we have the reset logic above, and if I were clever I could rope this into prewish_sim_tb and use it a combination syscon/mentor thing there too.
 	//so:
@@ -321,24 +570,6 @@ module prewish_controller(
 	wire newmask_clk = newmask_clk_ct[NEWMASK_CLK_BITS-1];			//hopework - does! but much too predictable,
 	//how to fudge it out a bit? Or just make it not a NRN.
   // END ORIGINAL TIMED MASK THING ========================================================================
-
-
-
-
-
-	//some data
-	/* doesn't work, just use another counter and case
-	byte [0:7] masks = {
-		8'b10000000,
-		8'b10100000,
-		8'b10101000,
-		8'b11111111,
-		8'b11010100,
-		8'b11010101,
-		8'b11001100,
-		8'b11100000
-	};
-	*/
 
 	//here we're missing the goods, not too much to do. Just need a little state machine!
 	//- reset/initial, await... hm.
@@ -435,5 +666,5 @@ module prewish_controller(
 			endcase
 		end
 	end
-
+*/
 endmodule
