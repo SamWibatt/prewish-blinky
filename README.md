@@ -10,6 +10,12 @@
     * gtkwave
 * dev system: running on a Virtualbox VM running Ubuntu 18.04, host system Windows 10 laptop
     * which later turned into an Ubuntu laptop when Windows 10 updates trashed Virtualbox :P
+* circuit wiring: 
+    * IceStick built-in LEDs on pins 95 (green), 96-99 (red), active high
+    * Built-in 12MHz oscillator on pin 21, associated using an SB_GB module to a global buffer
+    * Active low momentary contact button on pin 44, pulled up internally
+    * DIP switch, active low, pins 112 (LSB) to 119 (MSB), all pulled up internally
+    * refer to [pinout image by pighixxx](images/icestick_pinout.png)  
 
 ## objective
 
@@ -20,6 +26,7 @@
     * e.g. 8'b10100000 does two quick blinks and a pause, repeatedly
     * it uses a simple interface (see under purpose.)
 * and whatever other modules are necessary to drive the peripheral
+* allow user to set mask on an 8 position DIP switch and "load" it with a debounced button
 
 ## purpose
 * I'm new to HDLs but done a little bit of digital design
@@ -46,7 +53,6 @@
         * generates reset pulse
         * generates interface system clock
         * accept input from user via 8 bit DIP switch and a "load" button
-            * _initial version iterates through a list of predefined masks_
     * input handler - [prewish_debounce.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_debounce.v)
-        * broken atm 
+        * works but is poorly defined with 1 bit input and 8 bits output.
     
