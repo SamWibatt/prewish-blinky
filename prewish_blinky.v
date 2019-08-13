@@ -1,5 +1,18 @@
 /*
-All right! So here's the blinky part. Do the subset of the wishbone port. Per docs, about STUDENTs,
+All right! So here's the blinky part.
+
+The idea is that we have an 8-bit value, "mask," describing a pattern of blinks. Each bit takes ~1/10 second,
+a 1 bit means "on" and 0 is "off." The pattern repeats until another mask is set or the module is reset.
+
+For instance,
+10100000
+would mean two closely-spaced, short blinks roughly once a second.
+11110000
+would be a symmetrical flash about 1/2 second on, 1/2 off.
+
+---
+
+Do the subset of the wishbone port. Per docs, about STUDENTs,
 
 CLK_I
 The clock input [CLK_I] coordinates all activities for the internal logic within the WISHBONE interconnect. All WISHBONE
@@ -26,67 +39,30 @@ module prewish_blinky (
     input RST_I,
     input STB_I,
     input[7:0] DAT_I,
-    output o_alive,         // "I'm-alive" signal out, can do blinky or wev
+    output o_alive,         // "I'm-alive" signal out
     output o_led
 );
-    //I think inputs are assumed to be wires?
+    reg[7:0] mask = 0;              //high bits mean LED on for the corresponding segment of blink
 
-    reg[7:0] mask = 0;          //high bits mean LED on
-    // unnecessary reg carry = 0;              //for rotating mask
-
-    //ok so now we need a divide-em-down counter so sysclk is the input clock
-    //-- Numero de bits del prescaler (por defecto), can override in instantiation
+    //Counter to divide system clock CLK_I down to blinky clock.
     parameter SYSCLK_DIV_BITS = 22;
-
-    //-- Registro para implementar contador de SYSCLK_DIV_BITS bits
     reg [SYSCLK_DIV_BITS-1:0] ckdiv = 0;
-
-    //-- El bit más significativo se saca por la salida, this could be the "clock" that advances the mask
-    //see if we can avoid lagging by doing it st the clock ... rises when ckdiv is 0 and is just a pulse?
-    //SEEMS TO WORK JUST FINE
-    wire mask_clk;      //avoid default_nettype error 
-    assign mask_clk = ckdiv == 1;   //ckdiv[SYSCLK_DIV_BITS-1];
-    reg ledreg = 0;    //register for synching LED
-
-    //ok, adding to sensitivity list. mask_clk doesn't really need to be routed like a clock,
-    //and I'm trying to get finer grained response to the strobe and reset, yes?
-    //should I just do this in the main loop?
-    /*temp outcomment to see if it's causing error:  *********************** PUT BACK IN
-
-    always @(posedge mask_clk, posedge STB_I, posedge RST_I) begin
-        if(~RST_I & ~STB_I) begin
-            drat, the build toolchain doesn't like me assigning to mask and ledreg here and in the next block, it sez
-            "Creating register for signal `$paramod\prewish_blinky\SYSCLK_DIV_BITS=3.\mask' using process `$paramod\prewish_blinky\SYSCLK_DIV_BITS=3.$proc$prewish_blinky.v:51$37'.
-            ERROR: Multiple edge sensitive events found for this signal!" OH NOES
-            //so this needs to happen somewhere: I will move it to that other loop
-            mask <= mask <<< 1;         // can you do this? you can do this!
-            mask[0] <= mask[7];
-            // *********** possibug, may be laggy (may be unavoidbly so) or worse, skip the first bit of the
-            // pattern first time
-            // also do I need to assign it to a wire?
-            //ledreg <= mask[7];
-            //if we get off by one bit maybe this will work :)
-            //ledreg <= mask[0];
-        end
-    end
-    */
+    reg ledreg = 0;                 //register for synching LED output
 
     always @(posedge CLK_I) begin
-        if(RST_I == 1) begin            // reset case, just keep the mask pasted down
-            ckdiv <= 0;
-            mask <= 0;
-            ledreg <= 0;                 // *********possibug
+        if(RST_I == 1) begin        // reset case - zero out
+            ckdiv <= 0;             // reset clock divider
+            mask <= 0;              // clear blink pattern so LED would be off anyway
+            ledreg <= 0;            // clear register that syncs LED
         end else begin
-            if(STB_I == 1) begin   // strobe case, load mask with DAT
-                ckdiv <= 0;
-                                 // *********possibug
+            if(STB_I == 1) begin    // strobe case, load mask with DAT
+                ckdiv <= 0;         // reset divider
                 ledreg <= 0;        // shut off active high LED during load
-                //assiging a constant 8'b10100000 here DOES work, assigning DAT_I doesn't.
-                mask <= DAT_I;
+                mask <= DAT_I;      // load input data to the mask
             end else begin
                 ckdiv <= ckdiv + 1;
 
-                //moving mask roll in here to avoid ERROR: Multiple edge sensitive events found for this signal!"
+                // when the blink-interval has passed, "roll" the mask so the next bit will drive the LED.
                 if(ckdiv == 1) begin
                     mask <= mask <<< 1;
                     mask[0] <= mask[7];
@@ -95,29 +71,11 @@ module prewish_blinky (
             end
         end
     end
-    //pre-sync version assign o_led = mask[7];
+
     //see if I need a wire to drive parent's LED - doesn't seem to have been necessary, but maybe keep
-    //doing this DOES work: assign o_led = ckdiv[SYSCLK_DIV_BITS-1];
-    //assigning to ledreg and mask[7] don't
     assign o_led = ledreg;
 
     //debug thing, send out an "I'm alive" signal to caller. Here let's try at the mask roll rate
-    //putting this to ledreg didn't work
     assign o_alive = ckdiv[SYSCLK_DIV_BITS-1];
-
-    /* non-divided version
-    always @(posedge CLK_I) begin
-        if(RST_I == 1) begin            // reset case, just keep the mask pasted down
-            mask <= 0;
-        end else if(STB_I == 1) begin   // strobe case, load mask with DAT
-            mask <= DAT_I;
-        end else begin                  // main case, rotate mask to the left
-            mask <= mask <<< 1;         // can you do this? you can do this!
-            mask[0] <= mask[7];
-        end
-    end
-
-    assign oN_led = ~mask[7];   //negated bc active low and bits are high = on for ease of reading
-    */
 
 endmodule

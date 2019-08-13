@@ -2,17 +2,7 @@
 //for doing sim of thing that will be put on the actual chip
 //the controller creates all the other modules
 
-/*
-    SB_GB clk_gb (
-        .USER_SIGNAL_TO_GLOBAL_BUFFER(clki),
-        .GLOBAL_BUFFER_OUTPUT(clk)
-    );
-
-
-*/
-
 `default_nettype	none
-
 
 //let's see if I can do 12 MHz
 //8.3333333333333333333333333333333e-8 seconds per tick
@@ -25,14 +15,15 @@
 // kind of ok `timescale 100ns/10ns
 `timescale 100ns/100ns
 
-
+// THESE ARE MOCKUPS OF ICE40 BUILT IN MODULES THAT MAKE MY SIM.SH BUILD FAIL. GROSS BUT I WILL
+// FIGURE OUT HOW TO DO THIS RIGHT LATER (probably putting the device-specific stuff ... somewhere else.)
 //here's a cheap fake of the SB_GB module that the other tool chain uses
 //this lets it compile!
 module SB_GB(input USER_SIGNAL_TO_GLOBAL_BUFFER, output GLOBAL_BUFFER_OUTPUT);
     assign GLOBAL_BUFFER_OUTPUT = USER_SIGNAL_TO_GLOBAL_BUFFER;
 endmodule
 
-//similar
+//similar for pullup input pin
 /*
 SB_IO #(
   .PIN_TYPE(6'b 0000_01),     //IS THIS RIGHT? looks like it's PIN_NO_OUTPUT | PIN_INPUT (not latched or registered)
@@ -59,11 +50,11 @@ module prewish_tb;
     wire sysclk;
     wire strobe;
     wire[7:0] data;
-    wire led;         //active high LED
-    reg buttonreg = 0;    // simulated button input
-    reg[7:0] dipswicth_reg = 0; //simulated dip swicth input
-    wire led0, led1, led2, led3;        //other lights on the icestick
-    reg mnt_stb=0;       //STB_I,        //then here is the student that takes direction from testbench
+    wire led;                       //active high LED
+    reg buttonreg = 0;              // simulated button input
+    reg[7:0] dipswicth_reg = 0;     //simulated dip swicth input
+    wire led0, led1, led2, led3;    //other lights on the icestick
+    reg mnt_stb=0;       //STB_I,   //then here is the student that takes direction from testbench
     reg[7:0] mnt_data=8'b00000000;  //DAT_I
 
 	//primitive for routing iceStick's onboard clock to a global buffer, which is good for clocks
@@ -93,8 +84,6 @@ module prewish_tb;
     prewish_controller
         #(.NEWMASK_CLK_BITS(CTRL_MASK_CLK_BITS),.BLINKY_MASK_CLK_BITS(CTRL_MASK_CLK_BITS-7)) controller(
         .i_clk(clk),
-        //.RST_O(reset),
-        //.CLK_O(sysclk)
         .the_button(buttonreg),
         .i_bit7(dipswicth_reg[7]),
         .i_bit6(dipswicth_reg[6]),
@@ -136,35 +125,7 @@ module prewish_tb;
         #137 buttonreg = 0;
         #75 buttonreg = 1;
 
-        /* test from original simulated one - here we will let
-        //see if I can just wait some cycles
-        mnt_data = 8'b10101000;
-        #21 mnt_stb = 1;
-        #1 mnt_stb = 0;
-        #637 mnt_data = 8'b11001010;
-        #99 mnt_stb = 1;
-        #811 mnt_stb = 0;       //test long strobe
-        #711 $finish;
-        */
-        //for short sim #7111 $finish;
         #100000 $finish;           //longer sim, mask clock is now 16 bits. 5 sec run on vm, 30M vcd.
-        //#16000000 $finish;             //20 bits, 80 sec, 600M vcd. Works, but huge.
-        //25 bit would be 32x as long, yes? assume that much bigger, too? massive file and 80*32 sec long which is not hideorrible but
-        //I don't think it's necessary.
-        //#10000000 $finish;           //10x longer sim, mask clock is now 26 bits - small subset. 40 sec on vm, 400M vcd. Even this doesn't show anything interesting.
-        /* gtkwave yelled
-        Warning! File size is 379 MB.  This might fail in recoding.
-        Consider converting it to the FST database format instead.  (See the
-        vcd2fst(1) manpage for more information.)
-        To disable this warning, set rc variable vcd_warning_filesize to zero.
-        Alternatively, use the -o, --optimize command line option to convert to FST
-        or the -g, --giga command line option to use dynamically compressed memory.
-        */
-        //+ yeah def use the -o.
-        //So ok 20 bit clock looks good, and as far as timing goes - right now it's all taking 1.6 seconds, there are about 50 cycles of LED blink
-        //with every 3rd or so cut off - so it's maybe... supposed to be like 48 seconds? which is 30 times 1.6 seconds, or 5 bits more on the main clock?
-
-        //#1000000000 $finish;      //"real" time, and probably short for that
     end
 
 endmodule

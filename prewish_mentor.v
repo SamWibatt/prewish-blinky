@@ -1,5 +1,5 @@
 /*
-Here's the dummy mentor, let's say it's a state machine that
+Here's the dummy mentor which also has a student interface. It's just a link in a dataflow chain
 Student interface can receive data from testbench, which touches off the state machine.
 state
 any - if RST_I is 1, zero everything out incl state
@@ -7,12 +7,6 @@ any - if RST_I is 1, zero everything out incl state
 01 - if STB_I is low, advance to 11 and raise STB_O
 11 - lower STB_O, go to 00
 10 - currently meaningless, zero out STB_O and go to 00
-
-old state machine
-00 - reset / initial state, advances to 01 once reset is off
-01 - set up data for mask, raise strobe, advance to 11
-11 - lower strobe, stay in 11 forever
-
 */
 `default_nettype	none
 
@@ -31,22 +25,10 @@ module prewish_mentor(
 
     reg alivereg = 0;           //debug thing to toggle alive-LED when strobes happen?
 
-    //HERE IS THERE SOME WAY FOR ME TO LAUNDER THE POSSIBLY ASYNC INPUTS?
-    //OR SINCE WE'RE BEING WISHBONEY SHOULD I ASSUME THEY'RE SYNCHRONIZED?
-    //If async, or in any case to get in the habit? I should do the flipflop thing, per
-    //http://zipcpu.com/blog/2017/05/24/serial-port.html, looks something like
-    //always @(posedge i_clk)
-	//  r_uart <= i_uart;
-    //always @(posedge i_clk)
-	//  ck_uart <= r_uart;
-
     //state machine
     always @(posedge CLK_I) begin
-        //TEMP TEST SEE IF THIS WORKS I MEAN ALL I REALLY HAVE TO DO IS ZERO THE STATE
-        //newp dat_reg <= DAT_I;       //load data from input pins to output register
-
         if(RST_I == 1) begin
-            strobe_reg <= 0;
+            strobe_reg <= 0;    //resset! glue state and output to 0
             state <= 2'b00;
         end else begin
             //state machine stuff
@@ -57,15 +39,13 @@ module prewish_mentor(
                     strobe_reg <= 0;
                     if(STB_I == 1) begin
                         alivereg <= ~alivereg;  //toggle alive-reg for debug
-                        //THIS FIXED IT dat_reg <= 8'b10110100;	//DEBUG TEST WAS
-                        //temp test outcomment see @posedge clk_i above
                         dat_reg <= DAT_I;       //load data from input pins to output register
                         state <= 2'b01;         //advance to 01
                     end
                 end
 
                 2'b01 : begin
-                    //01 - if STB_I is low, advance to 11 and raise STB_O
+                    //01 - if STB_I is low, advance to 11 and raise STB_O (wait for strobe to drop)
                     if(~STB_I) begin
                         strobe_reg <= 1;
                         state <= 2'b11;
@@ -74,10 +54,7 @@ module prewish_mentor(
 
                 2'b11 : begin
                     //11 - lower STB_O, go to 00
-                    //strobe_reg <= 0;
-                    //state <= 2'b00;
-                    //let's try a wait state, just go to 10 - didn't help
-                    state <= 2'b10;
+                    state <= 2'b00;         //had a thing where it went to 10
                 end
 
                 2'b10 : begin
@@ -90,7 +67,7 @@ module prewish_mentor(
         end
     end
 
-    assign STB_O = strobe_reg;      //is this how I should do this? Similar seems to work with reset... hm. Well, see what we get
+    assign STB_O = strobe_reg;      //is this how I should do this? Similar seems to work with reset. Necessary?
     assign DAT_O = dat_reg;         //and is this how you send data?
 
     assign o_alive = ~alivereg;      // debug LED should toggle when strobe happens - the ~ should make it start out on

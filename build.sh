@@ -3,16 +3,35 @@ set -ex
 # and so this is easy to copy to other projects and rename stuff
 proj="prewish"
 
+# device targeted, use one of the architecture flags from nextpnr-ice40's help:
+#Architecture specific options:
+#  --lp384                     set device type to iCE40LP384
+#  --lp1k                      set device type to iCE40LP1K
+#  --lp8k                      set device type to iCE40LP8K
+#  --hx1k                      set device type to iCE40HX1K
+#  --hx8k                      set device type to iCE40HX8K
+#  --up5k                      set device type to iCE40UP5K
+#  --u4k                       set device type to iCE5LP4K
+# only without the --
+device="hx1k"
+
+# AND FIGURE OUT HOW TO USE THIS!
+#  --package arg               set device package
+
+# yosys produces the .json file from all the verilog sources. See the .ys file for details.
 yosys "$proj".ys
-# sean outcomments ../ from next line beginning bc I copied this from nextpnr examples
-nextpnr-ice40 --json "$proj".json --pcf "$proj".pcf --asc "$proj".asc
+
+# nextpnr does place-and-route, associating the design with the particular hardware layout
+# given in the .pcf.
+# Originally didn't have the --"$device". It seems to be the default target.
+#
+nextpnr-ice40 --"$device" --json "$proj".json --pcf "$proj".pcf --asc "$proj".asc
+
+# icepack converts nextpnr's output to a bitstream usable by the target hardware.
 icepack "$proj".asc "$proj".bin
 
-# HEREAFTER SIMULATION STUFF I DON'T KNOW HOW TO DO - does it need to be done for pnr/iceprog?
-#icebox_vlog "$proj".asc > "$proj"_chip.v
-#iverilog -o "$proj"_tb "$proj"_chip.v "$proj"_tb.v
-#vvp -N ./"$proj"_tb
-
 # use
-# iceprog prewish.bin
-# to send the binary to the chip. iceprog -v shows LOTS of info 
+# iceprog (proj).bin
+# to send the binary to the chip.
+# iceprog -v shows LOTS of info
+# you may have to sudo.
