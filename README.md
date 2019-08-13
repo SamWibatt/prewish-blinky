@@ -9,6 +9,7 @@
     * nextpnr
     * gtkwave
 * dev system: running on a Virtualbox VM running Ubuntu 18.04, host system Windows 10 laptop
+    * which later turned into an Ubuntu laptop when Windows 10 updates trashed Virtualbox :P
 
 ## objective
 
@@ -17,20 +18,20 @@
     * on for "1" bit, off for "0"
     * each bit ~1/10 second
     * e.g. 8'b10100000 does two quick blinks and a pause, repeatedly
-    * it uses a simple interconnect (see under purpose.)
+    * it uses a simple interface (see under purpose.)
 * and whatever other modules are necessary to drive the peripheral
 
 ## purpose
 * I'm new to HDLs but done a little bit of digital design
 * Learning Verilog now that there are open source tools and cheap dev hardware (as of writing on 7/30/19!)
 * Ramping up to learning [Wishbone b4 classic pipelined (pdf)](https://cdn.opencores.org/downloads/wbspec_b4.pdf) (say).
-    * Hence **"prewish" - Pre-Wishbone interconnect project!**
-    * So I can get used to designing and using interconnects
+    * Hence **"prewish" - Pre-Wishbone interface project!**
+    * So I can get used to designing and using interface standards
         * So I can use and contribute open source Verilog modules
     * I don't like the terms "Master" and "Slave" so I'm calling things "Mentor" and "Student", or M and S
-    * Simplified interconnect:
+    * Simplified interface:
         * all active high like Wishbone
-        * reset line global to the interconnect
+        * reset line global to the interface
         * system clock line global
         * 8 bit data input to S modules
         * 8 bit data output from M modules (they can be both!)
@@ -43,7 +44,7 @@
         * delivers it to downstream S
     * controller (syscon equivalent) - [prewish_controller.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_controller.v)
         * generates reset pulse
-        * generates interconnect system clock
+        * generates interface system clock
         * accept input from user via 8 bit DIP switch and a "load" button
             * _initial version iterates through a list of predefined masks_
     * input handler - [prewish_debounce.v](https://github.com/SamWibatt/prewish-blinky/blob/master/prewish_debounce.v)
