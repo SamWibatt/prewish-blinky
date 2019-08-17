@@ -16,6 +16,22 @@
     * Active low momentary contact button on pin 44, pulled up internally
     * DIP switch, active low, pins 112 (LSB) to 119 (MSB), all pulled up internally
     * refer to [pinout image by pighixxx](images/icestick_pinout.png) - Creative Commons Share-Alike license (CC-BY-SA), but the original link is broken. [Here's their Twitter account](https://twitter.com/pighixxx).
+    
+## Building
+
+With icestorm, nextpnr, yosys, etc. in place - run the following from the project directory:
+
+```
+./build.sh
+```
+
+If the build works, use 
+
+```
+iceprog prewish.bin
+```
+
+to send it to the device.
 
 ## objective
 
